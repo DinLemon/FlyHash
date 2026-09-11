@@ -52,3 +52,48 @@ def lsh_projection(n_kc: int, n_pn: int, seed: int) -> sparse.csr_array:
     rng = np.random.default_rng(seed)
     dense = rng.standard_normal((n_kc, n_pn)).astype(np.float32)
     return sparse.csr_array(dense)
+
+
+def shuffled_projection(
+    matrix: sparse.csr_array, seed: int, swaps_per_edge: int = 10
+) -> sparse.csr_array:
+    """Rewire the graph at random while preserving both degree sequences.
+
+    Double edge swap on the bipartite graph: pick edges (a, b) and (c, d),
+    propose (a, d) and (c, b), and accept only if neither already exists.
+    Every KC therefore keeps its exact number of inputs and every PN keeps
+    its exact number of targets — only *which* partner goes with which
+    changes. That is what isolates partner choice from degree structure.
+
+    An occupancy bitmap gives O(1) duplicate checks; for the real circuit
+    it is 1865 x 149 booleans, so the memory cost is negligible.
+    """
+    coo = matrix.tocoo()
+    rows = coo.row.astype(np.int64).copy()
+    cols = coo.col.astype(np.int64).copy()
+    n_edges = rows.size
+
+    occupied = np.zeros(matrix.shape, dtype=bool)
+    occupied[rows, cols] = True
+
+    rng = np.random.default_rng(seed)
+    n_swaps = swaps_per_edge * n_edges
+    first = rng.integers(0, n_edges, n_swaps)
+    second = rng.integers(0, n_edges, n_swaps)
+
+    for i, j in zip(first, second):
+        r1, c1 = rows[i], cols[i]
+        r2, c2 = rows[j], cols[j]
+        if r1 == r2 or c1 == c2:
+            continue
+        if occupied[r1, c2] or occupied[r2, c1]:
+            continue
+        occupied[r1, c1] = False
+        occupied[r2, c2] = False
+        occupied[r1, c2] = True
+        occupied[r2, c1] = True
+        cols[i] = c2
+        cols[j] = c1
+
+    data = np.ones(n_edges, dtype=np.float32)
+    return sparse.csr_array((data, (rows, cols)), shape=matrix.shape)
