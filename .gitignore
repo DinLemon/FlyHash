@@ -1,6 +1,8 @@
-data/
+data/raw/
+data/datasets/
 *.feather
 __pycache__/
 *.egg-info/
 .venv/
 .superpowers/
+uv.lock
