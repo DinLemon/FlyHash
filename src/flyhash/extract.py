@@ -72,8 +72,10 @@ def extract_circuit(
     apl_pre, apl_post, apl_w = pre[is_apl], post[is_apl], weight[is_apl]
     pre, post, weight = pre[~is_apl], post[~is_apl], weight[~is_apl]
 
-    # Drop KCs with too few PN inputs, then drop PNs left with no targets.
-    ids, counts = np.unique(post, return_counts=True)
+    # Drop KCs with too few distinct PN inputs, then drop PNs left with no targets.
+    # Count distinct (pre, post) pairs to measure in-degree correctly, not total rows.
+    unique_pairs = np.unique(np.column_stack([pre, post]), axis=0)
+    ids, counts = np.unique(unique_pairs[:, 1], return_counts=True)
     kc_keep = ids[counts >= min_indegree]
     sel = np.isin(post, kc_keep)
     pre, post, weight = pre[sel], post[sel], weight[sel]
