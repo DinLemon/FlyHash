@@ -1,4 +1,4 @@
-data/raw/
+data/
 *.feather
 __pycache__/
 *.egg-info/
