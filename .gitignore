@@ -1,0 +1,6 @@
+data/raw/
+*.feather
+__pycache__/
+*.egg-info/
+.venv/
+results/
