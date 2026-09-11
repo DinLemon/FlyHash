@@ -7,7 +7,7 @@
     "mean_claws": 6,
     "fly": 0.35901885923418225,
     "uniform": 0.38532069710829514,
-    "lsh": 0.3988144796868977,
+    "gaussian": 0.3988144796868977,
     "shuffled": [
       0.34376089195845766,
       0.35261941732122926,
@@ -111,7 +111,10 @@
       0.3618253039995442
     ],
     "shuffled_mean": 0.3557428343405984,
-    "verdict": "no_difference"
+    "verdict": "no_difference",
+    "n_shuffles_below": 76,
+    "n_shuffles_above": 24,
+    "empirical_p_two_sided": 0.49504950495049505
   },
   {
     "side": "R",
@@ -121,7 +124,7 @@
     "mean_claws": 6,
     "fly": 0.3272731955636216,
     "uniform": 0.3746798272983279,
-    "lsh": 0.3981348960157066,
+    "gaussian": 0.3981348960157066,
     "shuffled": [
       0.34004726889948,
       0.3289585437218109,
@@ -225,6 +228,9 @@
       0.3471739255338151
     ],
     "shuffled_mean": 0.33824804780637174,
-    "verdict": "fly_worse"
+    "verdict": "fly_worse",
+    "n_shuffles_below": 3,
+    "n_shuffles_above": 97,
+    "empirical_p_two_sided": 0.07920792079207921
   }
 ]
