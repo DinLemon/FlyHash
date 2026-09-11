@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 from scipy import sparse
 
 from flyhash.circuit import Circuit
+from flyhash.encode import make_compressor
 from flyhash.phase1 import run_hemisphere, verdict
 
 
@@ -50,15 +53,35 @@ def test_run_hemisphere_reports_every_model():
     out = run_hemisphere(
         make_small_circuit(), "L", db, queries, n_shuffles=3, ground_truth_k=5
     )
-    assert set(out) >= {"side", "n_kc", "n_pn", "k", "fly", "uniform", "lsh",
+    assert set(out) >= {"side", "n_kc", "n_pn", "k", "fly", "uniform", "gaussian",
                         "shuffled", "verdict"}
     assert len(out["shuffled"]) == 3
     assert 0.0 <= out["fly"] <= 1.0
 
 
 def test_run_hemisphere_uses_the_same_compressor_for_every_model():
-    """A different compressor per model would confound the comparison, so the
-    seed must not vary with the model. Two runs must reproduce exactly."""
+    """A different compressor per model would confound the comparison, so
+    make_compressor must be called exactly once per run_hemisphere call and
+    that one compressor must be reused for fly, uniform, gaussian and every
+    shuffle -- not rebuilt (even with a fixed seed) per model."""
+    rng = np.random.default_rng(0)
+    db = rng.random((80, 20), dtype=np.float32)
+    queries = rng.random((10, 20), dtype=np.float32)
+
+    with patch(
+        "flyhash.phase1.make_compressor", wraps=make_compressor
+    ) as mock_compressor:
+        out = run_hemisphere(
+            make_small_circuit(), "L", db, queries, n_shuffles=2, ground_truth_k=5
+        )
+
+    assert mock_compressor.call_count == 1
+    assert set(out) >= {"fly", "uniform", "gaussian", "shuffled"}
+    assert len(out["shuffled"]) == 2
+
+
+def test_run_hemisphere_is_deterministic():
+    """Two runs with the same inputs must reproduce exactly."""
     rng = np.random.default_rng(0)
     db = rng.random((80, 20), dtype=np.float32)
     queries = rng.random((10, 20), dtype=np.float32)
@@ -68,3 +91,18 @@ def test_run_hemisphere_uses_the_same_compressor_for_every_model():
                        ground_truth_k=5)
     assert a["fly"] == b["fly"]
     assert a["shuffled"] == b["shuffled"]
+
+
+def test_verdict_at_the_decision_boundary():
+    # The fly value sits a hair below the interpolated 2.5th percentile of
+    # the shuffle list, so verdict() must report "fly_worse" -- even though
+    # only 3 of the 100 shuffles actually lie below it (empirical two-sided
+    # p ~= 0.06). This is the pre-registered rule's real, knife-edge
+    # behaviour: a verdict can flip on a margin far smaller than the shuffle
+    # spread, which is exactly why the empirical rank is reported alongside
+    # it (see run_hemisphere's n_shuffles_below/above and
+    # empirical_p_two_sided) rather than folded into verdict() itself.
+    shuffles = list(np.linspace(0.10, 0.20, 100))
+    lower = float(np.percentile(shuffles, 2.5))
+    fly_map = lower - 1e-6
+    assert verdict(fly_map, shuffles) == "fly_worse"

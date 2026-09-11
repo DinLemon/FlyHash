@@ -1,8 +1,9 @@
 """The projection models under comparison.
 
 Every model returns a CSR matrix of shape (n_kc, n_pn) so that they are
-interchangeable in encode(). FLY, UNIFORM and SHUFFLED are binary; LSH is
-dense Gaussian and is stored as CSR only for interface uniformity.
+interchangeable in encode(). FLY, UNIFORM and SHUFFLED are binary;
+GAUSSIAN is a dense Gaussian random projection and is stored as CSR only
+for interface uniformity.
 """
 
 from __future__ import annotations
@@ -47,8 +48,15 @@ def uniform_projection(
     return sparse.csr_array((data, (rows, cols)), shape=(n_kc, n_pn))
 
 
-def lsh_projection(n_kc: int, n_pn: int, seed: int) -> sparse.csr_array:
-    """Classical dense Gaussian random projection, the baseline."""
+def dense_gaussian_projection(n_kc: int, n_pn: int, seed: int) -> sparse.csr_array:
+    """A dense Gaussian random projection, put through the same top-k
+    winner-take-all sparsification as every other model here. Serves as a
+    dense-wiring baseline.
+
+    This is NOT classical locality-sensitive hashing (which uses sign bits
+    of a random projection and Hamming distance) -- it must not be
+    described or compared to published LSH results as if it were.
+    """
     rng = np.random.default_rng(seed)
     dense = rng.standard_normal((n_kc, n_pn)).astype(np.float32)
     return sparse.csr_array(dense)

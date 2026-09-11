@@ -18,16 +18,16 @@ from flyhash.circuit import Circuit
 from flyhash.datasets import load_mnist
 from flyhash.encode import encode, make_compressor
 from flyhash.models import (
+    dense_gaussian_projection,
     fly_projection,
     hash_length,
-    lsh_projection,
     shuffled_projection,
     uniform_projection,
 )
 
 COMPRESSOR_SEED = 0
 UNIFORM_SEED = 500
-LSH_SEED = 600
+GAUSSIAN_SEED = 600
 SHUFFLE_SEED_BASE = 1000
 SIGNIFICANCE_PERCENTILE = 97.5
 
@@ -72,6 +72,20 @@ def run_hemisphere(
         for i in range(n_shuffles)
     ]
     fly_map = score(fly)
+
+    # Empirical rank disclosure. This does NOT feed back into verdict(),
+    # which stays exactly as pre-registered -- it exists only so a
+    # borderline interpolated verdict can be read alongside how many of
+    # the actual shuffle draws it beat.
+    n_shuffles_below = int(sum(1 for s in shuffles if s < fly_map))
+    n_shuffles_above = int(sum(1 for s in shuffles if s > fly_map))
+    empirical_p_two_sided = min(
+        2
+        * min(n_shuffles_below + 1, n_shuffles_above + 1)
+        / (len(shuffles) + 1),
+        1.0,
+    )
+
     return {
         "side": side,
         "n_kc": int(n_kc),
@@ -80,10 +94,13 @@ def run_hemisphere(
         "mean_claws": mean_claws,
         "fly": fly_map,
         "uniform": score(uniform_projection(n_kc, n_pn, mean_claws, UNIFORM_SEED)),
-        "lsh": score(lsh_projection(n_kc, n_pn, LSH_SEED)),
+        "gaussian": score(dense_gaussian_projection(n_kc, n_pn, GAUSSIAN_SEED)),
         "shuffled": shuffles,
         "shuffled_mean": float(np.mean(shuffles)),
         "verdict": verdict(fly_map, shuffles),
+        "n_shuffles_below": n_shuffles_below,
+        "n_shuffles_above": n_shuffles_above,
+        "empirical_p_two_sided": float(empirical_p_two_sided),
     }
 
 
@@ -112,8 +129,10 @@ def main(argv: list[str] | None = None) -> int:
             f"   FLY      {r['fly']:.4f}\n"
             f"   SHUFFLED {r['shuffled_mean']:.4f} (mean of {len(r['shuffled'])})\n"
             f"   UNIFORM  {r['uniform']:.4f}\n"
-            f"   LSH      {r['lsh']:.4f}\n"
-            f"   verdict: {r['verdict']}"
+            f"   GAUSSIAN {r['gaussian']:.4f}\n"
+            f"   verdict: {r['verdict']}\n"
+            f"   empirical: {r['n_shuffles_below']}/{len(r['shuffled'])} shuffles "
+            f"below, two-sided p={r['empirical_p_two_sided']:.4f}"
         )
     gap = abs(results[0]["fly"] - results[1]["fly"])
     print(f"\nhemisphere noise floor (|FLY-L - FLY-R|): {gap:.4f}")

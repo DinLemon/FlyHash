@@ -4,9 +4,9 @@ from scipy import sparse
 
 from flyhash.circuit import Circuit
 from flyhash.models import (
+    dense_gaussian_projection,
     fly_projection,
     hash_length,
-    lsh_projection,
     shuffled_projection,
     uniform_projection,
 )
@@ -54,8 +54,8 @@ def test_uniform_projection_rejects_too_many_claws():
         uniform_projection(10, 3, n_claws=5, seed=0)
 
 
-def test_lsh_projection_is_dense_and_shaped_right():
-    p = lsh_projection(n_kc=40, n_pn=12, seed=0)
+def test_dense_gaussian_projection_is_dense_and_shaped_right():
+    p = dense_gaussian_projection(n_kc=40, n_pn=12, seed=0)
     assert p.shape == (40, 12)
     assert p.nnz == 40 * 12
 
