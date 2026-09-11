@@ -63,3 +63,11 @@ def test_hash_length_is_five_percent_rounded():
     assert hash_length(1865) == 93
     assert hash_length(1875) == 94
     assert hash_length(10) == 1  # never returns zero
+
+
+def test_hash_length_rounds_half_up_consistently():
+    # Verify half-up rounding at .5 boundaries (exact multiples)
+    # At 5%: 1850 * 0.05 = 92.5, 1750 * 0.05 = 87.5
+    assert hash_length(1850) == 93  # 92.5 rounds up
+    assert hash_length(1750) == 88  # 87.5 rounds up
+    # Both .5 cases round in the SAME direction (up), unlike banker's rounding

@@ -17,7 +17,7 @@ HASH_FRACTION = 0.05
 
 def hash_length(n_kc: int, fraction: float = HASH_FRACTION) -> int:
     """Number of KCs left active after winner-take-all."""
-    return max(1, int(round(fraction * n_kc)))
+    return max(1, int(np.floor(fraction * n_kc + 0.5)))
 
 
 def fly_projection(circuit: Circuit) -> sparse.csr_array:
