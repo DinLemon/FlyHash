@@ -114,7 +114,9 @@
     "verdict": "no_difference",
     "n_shuffles_below": 76,
     "n_shuffles_above": 24,
-    "empirical_p_two_sided": 0.49504950495049505
+    "empirical_p_two_sided": 0.49504950495049505,
+    "verdict_margin_in_sd": 1.1639107210667556,
+    "verdict_borderline": false
   },
   {
     "side": "R",
@@ -231,6 +233,8 @@
     "verdict": "fly_worse",
     "n_shuffles_below": 3,
     "n_shuffles_above": 97,
-    "empirical_p_two_sided": 0.07920792079207921
+    "empirical_p_two_sided": 0.07920792079207921,
+    "verdict_margin_in_sd": 0.01235811019229255,
+    "verdict_borderline": true
   }
 ]
