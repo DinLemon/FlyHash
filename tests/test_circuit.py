@@ -36,7 +36,7 @@ def test_binary_discards_weights_but_keeps_structure():
     assert b.nnz == c.pn_to_kc.nnz
 
 
-def test_hemisphere_selects_kcs_and_keeps_all_pn_columns():
+def test_hemisphere_selects_kcs_and_keeps_used_pn_columns():
     c = make_toy_circuit()
     left = c.hemisphere("L")
     assert left.n_kc == 2
@@ -45,6 +45,18 @@ def test_hemisphere_selects_kcs_and_keeps_all_pn_columns():
     assert left.apl_to_kc.tolist() == [40.0, 41.0]
     np.testing.assert_array_equal(
         left.pn_to_kc.toarray(), np.array([[5.0, 0.0], [7.0, 3.0]], dtype=np.float32)
+    )
+
+
+def test_hemisphere_drops_unused_pn_columns():
+    c = make_toy_circuit()
+    right = c.hemisphere("R")
+    assert right.n_pn == 1
+    assert right.pn_ids.tolist() == [21]
+    assert right.pn_types.tolist() == ["VA1v_adPN"]
+    assert right.pn_sides.tolist() == ["R"]
+    np.testing.assert_array_equal(
+        right.pn_to_kc.toarray(), np.array([[9.0]], dtype=np.float32)
     )
 
 

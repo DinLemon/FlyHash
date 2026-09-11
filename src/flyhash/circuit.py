@@ -43,20 +43,25 @@ class Circuit:
         return out
 
     def hemisphere(self, side: str) -> Circuit:
-        """Keep only KCs whose soma is on `side`. All PN columns are kept so
-        that the left and right circuits share an input axis layout."""
+        """Keep only KCs whose soma is on `side`, and only the PN columns that
+        actually reach one of those KCs. Each hemisphere is analysed
+        independently with its own compressor, so a shared input axis layout
+        with the other hemisphere is not needed."""
         if side not in SIDES:
             raise ValueError(f"side must be one of {SIDES}, got {side!r}")
         mask = self.kc_sides == side
         idx = np.flatnonzero(mask)
+        sub = sparse.csr_array(self.pn_to_kc[idx, :])
+        col_degrees = np.asarray((sub != 0).sum(axis=0)).ravel()
+        col_idx = np.flatnonzero(col_degrees)
         return Circuit(
-            pn_to_kc=sparse.csr_array(self.pn_to_kc[idx, :]),
+            pn_to_kc=sparse.csr_array(sub[:, col_idx]),
             kc_ids=self.kc_ids[idx],
             kc_types=self.kc_types[idx],
             kc_sides=self.kc_sides[idx],
-            pn_ids=self.pn_ids,
-            pn_types=self.pn_types,
-            pn_sides=self.pn_sides,
+            pn_ids=self.pn_ids[col_idx],
+            pn_types=self.pn_types[col_idx],
+            pn_sides=self.pn_sides[col_idx],
             apl_to_kc=self.apl_to_kc[idx],
         )
 
