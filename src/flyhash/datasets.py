@@ -37,7 +37,7 @@ def _fetch(name: str, cache_dir: Path) -> Path:
         try:
             urllib.request.urlretrieve(MNIST_BASE + name, temp_file)
             temp_file.replace(target)
-        except:
+        except Exception:
             temp_file.unlink(missing_ok=True)
             raise
     return target

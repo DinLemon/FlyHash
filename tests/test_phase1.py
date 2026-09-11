@@ -6,7 +6,7 @@ from scipy import sparse
 
 from flyhash.circuit import Circuit
 from flyhash.encode import make_compressor
-from flyhash.phase1 import run_hemisphere, verdict
+from flyhash.phase1 import run_hemisphere, verdict, verdict_margin_in_sd
 
 
 def make_small_circuit(n_kc=60, n_pn=12, seed=0):
@@ -106,3 +106,39 @@ def test_verdict_at_the_decision_boundary():
     lower = float(np.percentile(shuffles, 2.5))
     fly_map = lower - 1e-6
     assert verdict(fly_map, shuffles) == "fly_worse"
+
+
+def test_verdict_margin_flags_a_borderline_call():
+    # A fly value sitting a hair below the 2.5th-percentile cutoff produces
+    # a "fly_worse" verdict that is only barely decided: the margin, in
+    # units of the shuffle distribution's standard deviation, should be
+    # tiny and the call should be flagged as borderline.
+    shuffles = list(np.linspace(0.10, 0.20, 100))
+    lower = float(np.percentile(shuffles, 2.5))
+    borderline_fly_map = lower - 1e-6
+
+    label = verdict(borderline_fly_map, shuffles)
+    assert label == "fly_worse"
+    margin = verdict_margin_in_sd(label, borderline_fly_map, shuffles)
+    assert abs(margin) < 0.5
+
+    # A comfortably-decided case: fly_map sits far below every shuffle, so
+    # the margin should be large and not borderline.
+    comfortable_fly_map = 0.0
+    comfortable_label = verdict(comfortable_fly_map, shuffles)
+    assert comfortable_label == "fly_worse"
+    comfortable_margin = verdict_margin_in_sd(
+        comfortable_label, comfortable_fly_map, shuffles
+    )
+    assert abs(comfortable_margin) >= 0.5
+
+    # And run_hemisphere must surface both derived fields on its result.
+    rng = np.random.default_rng(0)
+    db = rng.random((80, 20), dtype=np.float32)
+    queries = rng.random((10, 20), dtype=np.float32)
+    out = run_hemisphere(
+        make_small_circuit(), "L", db, queries, n_shuffles=5, ground_truth_k=5
+    )
+    assert "verdict_margin_in_sd" in out
+    assert "verdict_borderline" in out
+    assert out["verdict_borderline"] == (abs(out["verdict_margin_in_sd"]) < 0.5)

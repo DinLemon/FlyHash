@@ -43,6 +43,42 @@ def verdict(fly_map: float, shuffle_maps: list[float]) -> str:
     return "no_difference"
 
 
+def verdict_margin_in_sd(
+    verdict_label: str, fly_map: float, shuffle_maps: list[float]
+) -> float:
+    """How far fly_map sits from the cutoff that decided verdict_label,
+    in units of the shuffle distribution's standard deviation.
+
+    This is a derived reporting quantity only -- it never feeds back into
+    verdict(), which remains the pre-registered decision exactly as written.
+
+    Sign convention: positive means the verdict is comfortable (fly_map is
+    further into the verdict's region, away from the cutoff that could flip
+    it); negative or near zero means the call is marginal. For
+    "fly_worse"/"fly_better" this is the signed distance from fly_map to
+    the cutoff that produced that verdict, oriented so that being deeper in
+    the verdict's region is positive. For "no_difference" it is the
+    distance to whichever of the two cutoffs is nearer -- a small value
+    there means fly_map is close to flipping the verdict.
+    """
+    std = float(np.std(shuffle_maps))
+    upper = float(np.percentile(shuffle_maps, SIGNIFICANCE_PERCENTILE))
+    lower = float(np.percentile(shuffle_maps, 100.0 - SIGNIFICANCE_PERCENTILE))
+
+    if std == 0.0:
+        # No spread to measure a margin against -- avoid dividing by zero.
+        return 0.0
+
+    if verdict_label == "fly_worse":
+        raw = lower - fly_map
+    elif verdict_label == "fly_better":
+        raw = fly_map - upper
+    else:
+        raw = min(fly_map - lower, upper - fly_map)
+
+    return raw / std
+
+
 def run_hemisphere(
     circuit: Circuit,
     side: str,
@@ -86,6 +122,9 @@ def run_hemisphere(
         1.0,
     )
 
+    verdict_label = verdict(fly_map, shuffles)
+    margin_in_sd = verdict_margin_in_sd(verdict_label, fly_map, shuffles)
+
     return {
         "side": side,
         "n_kc": int(n_kc),
@@ -97,10 +136,12 @@ def run_hemisphere(
         "gaussian": score(dense_gaussian_projection(n_kc, n_pn, GAUSSIAN_SEED)),
         "shuffled": shuffles,
         "shuffled_mean": float(np.mean(shuffles)),
-        "verdict": verdict(fly_map, shuffles),
+        "verdict": verdict_label,
         "n_shuffles_below": n_shuffles_below,
         "n_shuffles_above": n_shuffles_above,
         "empirical_p_two_sided": float(empirical_p_two_sided),
+        "verdict_margin_in_sd": margin_in_sd,
+        "verdict_borderline": abs(margin_in_sd) < 0.5,
     }
 
 
@@ -124,14 +165,18 @@ def main(argv: list[str] | None = None) -> int:
     Path(args.out).write_text(json.dumps(results, indent=2), encoding="utf-8")
 
     for r in results:
+        if r["verdict_borderline"]:
+            marker = f" [BORDERLINE, {r['verdict_margin_in_sd']:.2f} SD]"
+        else:
+            marker = ""
         print(
             f"{r['side']}: n_kc={r['n_kc']} n_pn={r['n_pn']} k={r['k']}\n"
             f"   FLY      {r['fly']:.4f}\n"
             f"   SHUFFLED {r['shuffled_mean']:.4f} (mean of {len(r['shuffled'])})\n"
             f"   UNIFORM  {r['uniform']:.4f}\n"
             f"   GAUSSIAN {r['gaussian']:.4f}\n"
-            f"   verdict: {r['verdict']}\n"
-            f"   empirical: {r['n_shuffles_below']}/{len(r['shuffled'])} shuffles "
+            f"   verdict: {r['verdict']}{marker} - empirical "
+            f"{r['n_shuffles_below']}/{len(r['shuffled'])} shuffles "
             f"below, two-sided p={r['empirical_p_two_sided']:.4f}"
         )
     gap = abs(results[0]["fly"] - results[1]["fly"])
