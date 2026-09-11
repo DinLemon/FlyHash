@@ -36,6 +36,10 @@ def test_average_precision_is_zero_when_nothing_is_relevant():
     assert average_precision(retrieved, {42}) == 0.0
 
 
+def test_average_precision_handles_an_empty_relevant_set():
+    assert average_precision(np.array([1, 2, 3]), set()) == 0.0
+
+
 def test_average_precision_handles_a_partial_hit():
     # relevant item at rank 2 only: precision 1/2, divided by |relevant| = 1
     retrieved = np.array([5, 3])
