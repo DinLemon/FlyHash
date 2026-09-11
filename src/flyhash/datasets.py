@@ -33,7 +33,13 @@ def _fetch(name: str, cache_dir: Path) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / name
     if not target.exists():
-        urllib.request.urlretrieve(MNIST_BASE + name, target)
+        temp_file = cache_dir / f"{name}.tmp"
+        try:
+            urllib.request.urlretrieve(MNIST_BASE + name, temp_file)
+            temp_file.replace(target)
+        except:
+            temp_file.unlink(missing_ok=True)
+            raise
     return target
 
 
@@ -45,5 +51,11 @@ def load_mnist(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.
     """
     cache = Path(cache_dir)
     db = read_idx_images(_fetch(TRAIN_IMAGES, cache))[:DATABASE_SIZE]
+    if db.shape[0] != DATABASE_SIZE:
+        raise ValueError(f"Expected {DATABASE_SIZE} images in {TRAIN_IMAGES}, got {db.shape[0]}")
+
     queries = read_idx_images(_fetch(TEST_IMAGES, cache))[:QUERY_COUNT]
+    if queries.shape[0] != QUERY_COUNT:
+        raise ValueError(f"Expected {QUERY_COUNT} images in {TEST_IMAGES}, got {queries.shape[0]}")
+
     return db, queries

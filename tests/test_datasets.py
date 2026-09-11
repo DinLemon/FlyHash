@@ -4,7 +4,15 @@ import struct
 import numpy as np
 import pytest
 
-from flyhash.datasets import load_mnist, read_idx_images
+from flyhash.datasets import (
+    load_mnist,
+    read_idx_images,
+    TRAIN_IMAGES,
+    TEST_IMAGES,
+    DATABASE_SIZE,
+    QUERY_COUNT,
+    IDX_IMAGE_MAGIC,
+)
 
 
 def test_read_idx_images_parses_the_header_and_pixels(tmp_path):
@@ -34,3 +42,23 @@ def test_load_mnist_returns_the_preregistered_shapes(tmp_path):
     assert queries.shape == (1000, 784)
     assert db.dtype == np.float32
     assert db.max() <= 255.0
+
+
+def test_load_mnist_rejects_a_short_file(tmp_path):
+    # Create a short training file with fewer images than DATABASE_SIZE
+    short_count = DATABASE_SIZE // 2
+    images = np.zeros((short_count, 28, 28), dtype=np.uint8)
+    train_path = tmp_path / TRAIN_IMAGES
+    with gzip.open(train_path, "wb") as f:
+        f.write(struct.pack(">IIII", IDX_IMAGE_MAGIC, short_count, 28, 28))
+        f.write(images.tobytes())
+
+    # Create a valid test file to avoid network call
+    test_images = np.zeros((QUERY_COUNT, 28, 28), dtype=np.uint8)
+    test_path = tmp_path / TEST_IMAGES
+    with gzip.open(test_path, "wb") as f:
+        f.write(struct.pack(">IIII", IDX_IMAGE_MAGIC, QUERY_COUNT, 28, 28))
+        f.write(test_images.tobytes())
+
+    with pytest.raises(ValueError, match="Expected"):
+        load_mnist(cache_dir=tmp_path)
