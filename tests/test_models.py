@@ -111,7 +111,22 @@ def test_shuffle_never_creates_a_duplicate_edge():
 def test_shuffle_actually_rewires_something():
     m = _fly_like_matrix()
     s = shuffled_projection(m, seed=1000)
-    assert not np.array_equal(s.toarray(), m.toarray())
+    # A single moved edge already fails np.array_equal, so that check alone
+    # can't catch a badly-mixed shuffle that leaves most edges in place --
+    # which would bias the fly-vs-control comparison this function underpins
+    # toward "no difference". Instead, measure the overlap (edges that
+    # remain in the same position) as a fraction of total edges and require
+    # most of them to have actually moved.
+    overlap = m.multiply(s).nnz / m.nnz
+    assert overlap < 0.5
+
+
+def test_swaps_per_edge_controls_mixing():
+    m = _fly_like_matrix()
+    unshuffled = shuffled_projection(m, seed=1000, swaps_per_edge=0)
+    shuffled = shuffled_projection(m, seed=1000)
+    np.testing.assert_array_equal(unshuffled.toarray(), m.toarray())
+    assert not np.array_equal(shuffled.toarray(), m.toarray())
 
 
 def test_shuffle_is_deterministic_for_a_seed():
