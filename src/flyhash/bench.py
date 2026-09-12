@@ -33,23 +33,22 @@ def true_neighbours(
 def rank_by_code_overlap(
     db_codes: sparse.csr_array, query_codes: sparse.csr_array, k: int
 ) -> np.ndarray:
-    """Rank database items by how many active units they share with each query."""
-    overlap = np.asarray((query_codes @ db_codes.T).todense(), dtype=np.float32)
-    # Overlap scores are small integers over ~10000 database items, so ties
-    # at the rank-k boundary are dense. np.argpartition (introselect) is not
-    # guaranteed to select the same candidate set on ties across numpy/BLAS
-    # versions, so a stable sort applied only to its output is not enough to
-    # guarantee bit-for-bit reproducibility. To make the whole ranking
-    # deterministic we sort the full row instead of pre-selecting candidates
-    # with argpartition: correctness beats speed here, and these arrays are
-    # only 1000x10000. np.lexsort is stable and lets us make the tie-break
-    # explicit as a secondary key: sort by (descending overlap, ascending
-    # database index), i.e. lexsort on (index, -overlap) since lexsort's
-    # last key is primary.
+    """Rank database items by how many active units they share with each query.
+
+    Ties are broken by ascending database index, deterministically. Overlap
+    counts are integers, so the composite key `overlap * n_db - index` is
+    injective: entries with different overlap differ by at least 1, and equal
+    overlap is settled by the index. Because no two keys collide, the
+    unstable selection below cannot change which items are chosen, and the
+    result is identical to a full lexsort at a fraction of the cost.
+    """
+    overlap = np.asarray((query_codes @ db_codes.T).todense(), dtype=np.float64)
     n_db = overlap.shape[1]
-    db_index = np.broadcast_to(np.arange(n_db, dtype=np.int64), overlap.shape)
-    order = np.lexsort((db_index, -overlap), axis=1)
-    return order[:, :k].astype(np.int64)
+    index = np.arange(n_db, dtype=np.float64)
+    key = overlap * n_db - index[None, :]
+    idx = np.argpartition(-key, kth=k - 1, axis=1)[:, :k]
+    order = np.take_along_axis(-key, idx, axis=1).argsort(axis=1)
+    return np.take_along_axis(idx, order, axis=1).astype(np.int64)
 
 
 def average_precision(retrieved: np.ndarray, relevant: set[int]) -> float:

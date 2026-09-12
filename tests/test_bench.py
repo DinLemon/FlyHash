@@ -50,3 +50,23 @@ def test_mean_average_precision_averages_over_queries():
     retrieved = np.array([[1, 2], [3, 4]])
     truth = np.array([[1, 2], [9, 8]])
     assert mean_average_precision(retrieved, truth) == 0.5
+
+
+def test_ranking_matches_a_full_lexsort_reference():
+    """The fast path must agree exactly with an explicit full sort."""
+    rng = np.random.default_rng(0)
+    db = sparse.csr_array((rng.random((200, 40)) < 0.2).astype(np.float32))
+    q = sparse.csr_array((rng.random((20, 40)) < 0.2).astype(np.float32))
+    overlap = np.asarray((q @ db.T).todense(), dtype=np.float64)
+    index = np.broadcast_to(np.arange(db.shape[0]), overlap.shape)
+    reference = np.lexsort((index, -overlap), axis=1)[:, :10].astype(np.int64)
+    np.testing.assert_array_equal(rank_by_code_overlap(db, q, k=10), reference)
+
+
+def test_ranking_is_stable_across_repeated_calls():
+    rng = np.random.default_rng(1)
+    db = sparse.csr_array((rng.random((200, 40)) < 0.2).astype(np.float32))
+    q = sparse.csr_array((rng.random((20, 40)) < 0.2).astype(np.float32))
+    first = rank_by_code_overlap(db, q, k=10)
+    for _ in range(3):
+        np.testing.assert_array_equal(rank_by_code_overlap(db, q, k=10), first)
