@@ -46,6 +46,9 @@ BASELINE = {"level": "pn", "hash_fraction": 0.05, "apl_gain": 0.0}
 # hemisphere away from this.
 PHASE1_VERDICT = {"L": "no_difference", "R": "fly_worse"}
 
+# Dataset that Phase 1 actually measured (for same-dataset instability reporting)
+PHASE1_DATASET = "mnist"
+
 
 def sweep_conditions() -> list[dict]:
     """One factor varied at a time from the baseline, not a full cross product.
@@ -143,6 +146,57 @@ def run_condition(
     }
 
 
+def summarize_results(results: list[dict], dataset_names: list[str]) -> str:
+    """Generate summary report of results comparing to Phase 1 verdict.
+
+    Args:
+        results: List of result dictionaries from sweep_conditions
+        dataset_names: List of dataset names (in order) used in the sweep
+
+    Returns:
+        Summary text to print
+    """
+    matches = [r for r in results if r["verdict"] == PHASE1_VERDICT[r["side"]]]
+    differs = [r for r in results if r["verdict"] != PHASE1_VERDICT[r["side"]]]
+    fly_better = [r for r in results if r["verdict"] == "fly_better"]
+
+    # Count differs by dataset
+    differs_by_dataset = {}
+    total_by_dataset = {}
+    for r in results:
+        dataset = r["dataset"]
+        total_by_dataset[dataset] = total_by_dataset.get(dataset, 0) + 1
+        if r["verdict"] != PHASE1_VERDICT[r["side"]]:
+            differs_by_dataset[dataset] = differs_by_dataset.get(dataset, 0) + 1
+
+    # Build summary lines
+    lines = []
+    lines.append(f"\nconditions run: {len(results)}")
+    lines.append(f"conditions matching Phase 1's verdict for their hemisphere: {len(matches)}")
+    lines.append(f"conditions that differ from Phase 1's verdict for their hemisphere: {len(differs)}")
+
+    # Print by-dataset breakdown (in dataset order)
+    dataset_breakdown = ", ".join(
+        f"{ds} {differs_by_dataset.get(ds, 0)}" for ds in dataset_names
+    )
+    lines.append(f"  by dataset: {dataset_breakdown}")
+    lines.append(f"  only {PHASE1_DATASET} is a same-dataset comparison; Phase 1 measured {PHASE1_DATASET} alone,")
+    lines.append(f"  so the glove and sift differences reflect the change of data, not instability")
+    mnist_total = total_by_dataset.get(PHASE1_DATASET, 0)
+    mnist_differs = differs_by_dataset.get(PHASE1_DATASET, 0)
+    lines.append(f"  same-dataset instability: {mnist_differs} of {mnist_total} {PHASE1_DATASET} conditions")
+
+    for r in differs:
+        lines.append(
+            f"  FLIP {r['dataset']:6s} {r['side']} {r['level']:5s} "
+            f"frac={r['hash_fraction']:.2f} gain={r['apl_gain']:.0e} "
+            f"phase1={PHASE1_VERDICT[r['side']]} phase2={r['verdict']}"
+        )
+    lines.append(f"conditions where the fly beat the shuffle (fly_better): {len(fly_better)}")
+
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Run the Phase 2 robustness sweeps")
     p.add_argument("--circuit", default="data/circuit.npz")
@@ -179,20 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(results, indent=2), encoding="utf-8")
 
-    matches = [r for r in results if r["verdict"] == PHASE1_VERDICT[r["side"]]]
-    differs = [r for r in results if r["verdict"] != PHASE1_VERDICT[r["side"]]]
-    fly_better = [r for r in results if r["verdict"] == "fly_better"]
-
-    print(f"\nconditions run: {len(results)}")
-    print(f"conditions matching Phase 1's verdict for their hemisphere: {len(matches)}")
-    print(f"conditions that differ from Phase 1's verdict for their hemisphere: {len(differs)}")
-    for r in differs:
-        print(
-            f"  FLIP {r['dataset']:6s} {r['side']} {r['level']:5s} "
-            f"frac={r['hash_fraction']:.2f} gain={r['apl_gain']:.0e} "
-            f"phase1={PHASE1_VERDICT[r['side']]} phase2={r['verdict']}"
-        )
-    print(f"conditions where the fly beat the shuffle (fly_better): {len(fly_better)}")
+    print(summarize_results(results, args.datasets))
     print(f"wrote {args.out}")
     return 0
 
