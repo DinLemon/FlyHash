@@ -1,7 +1,10 @@
+from unittest.mock import patch
+
 import numpy as np
 from scipy import sparse
 
 from flyhash.circuit import Circuit
+from flyhash.encode import make_compressor
 from flyhash.phase2 import _projection_for_level, run_condition
 
 
@@ -100,3 +103,28 @@ def test_glomerulus_projection_is_binarised():
     assert glom.nnz > 0
     assert np.all(glom.data == 1.0)
     assert glom.nnz < pn.nnz
+
+
+def test_run_condition_builds_one_compressor_for_all_models():
+    """run_condition scores fly, uniform, gaussian and every shuffle -- five
+    models in total across the study. They must all share one compressor
+    built once, or the comparison measures preprocessing instead of wiring.
+    flyhash.phase2 imports make_compressor into its own module namespace, so
+    the mock has to patch it there (not flyhash.encode.make_compressor) to
+    actually intercept the call that produces every Phase 2/3 number."""
+    rng = np.random.default_rng(0)
+    db = rng.random((80, 20), dtype=np.float32)
+    q = rng.random((10, 20), dtype=np.float32)
+
+    with patch(
+        "flyhash.phase2.make_compressor", wraps=make_compressor
+    ) as mock_compressor:
+        out = run_condition(
+            make_small_circuit(), "L", db, q,
+            level="pn", hash_fraction=0.05, apl_gain=0.0,
+            n_shuffles=2, ground_truth_k=5,
+        )
+
+    assert mock_compressor.call_count == 1
+    assert set(out) >= {"fly", "uniform", "gaussian", "shuffled"}
+    assert len(out["shuffled"]) == 2
