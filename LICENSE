@@ -19,3 +19,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+NOTE ON DATA
+
+This licence covers the source code only.
+
+The connectome files committed under data/ are derived from published datasets
+with their own terms:
+
+  - data/circuit.npz and data/thresholds/*.npz derive from the Janelia FlyEM
+    male-CNS v1.0 dataset, licensed CC-BY 4.0.
+
+  - data/circuit-flywire.npz derives from the FlyWire FAFB v783 public release,
+    licensed CC-BY-NC 4.0. Commercial use of that file, and of any result
+    derived from it, is NOT permitted by its source licence.
+
+Results under results/ that involve the female animal inherit the same
+non-commercial condition.
