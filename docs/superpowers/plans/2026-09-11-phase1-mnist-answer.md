@@ -1528,7 +1528,7 @@ Expected: `n_kc=1865 n_pn=149 k=93` for L and `n_kc=1875 n_pn=143 k=94` for R, f
 cd "G:/C#/flyhash" && git add src/flyhash/phase1.py tests/test_phase1.py results/phase1-mnist.json && git commit -m "feat: run pre-registered Phase 1 MNIST comparison"
 ```
 
-Note: `results/` is currently in `.gitignore`. Remove that line before committing, since the result *is* the deliverable.
+Note: `results/` is already absent from `.gitignore`, so the JSON commits normally. The result *is* the deliverable — do not ignore it.
 
 ---
 
