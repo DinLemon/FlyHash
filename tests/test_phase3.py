@@ -1,8 +1,11 @@
+from pathlib import Path
+
 import numpy as np
+import pytest
 from scipy import sparse
 
 from flyhash.circuit import Circuit
-from flyhash.phase3 import run_replication
+from flyhash.phase3 import ANIMALS, MATCHED_THRESHOLD, run_replication
 
 
 def make_circuit(n_kc, seed):
@@ -54,3 +57,22 @@ def test_rows_carry_a_verdict_and_empirical_rank():
 
 def test_replication_is_deterministic():
     assert [r["fly"] for r in _run()] == [r["fly"] for r in _run()]
+
+
+@pytest.mark.skipif(
+    not Path(ANIMALS["male"]).exists() or not Path(ANIMALS["female"]).exists(),
+    reason="built circuit files are not present in this checkout",
+)
+def test_male_arm_uses_the_threshold_matched_circuit():
+    """The male arm must load the threshold-5 circuit, not the study's
+    default threshold-3 circuit -- otherwise the sex comparison is confounded
+    with the edge-inclusion criterion, since FlyWire's own female table is
+    already cut at 5 synapses per pair."""
+    male = Circuit.load(ANIMALS["male"])
+    female = Circuit.load(ANIMALS["female"])
+
+    assert male.pn_to_kc.data.min() >= MATCHED_THRESHOLD
+    assert female.pn_to_kc.data.min() >= MATCHED_THRESHOLD
+
+    assert set(male.kc_sides) == {"L", "R"}
+    assert set(female.kc_sides) == {"L", "R"}
