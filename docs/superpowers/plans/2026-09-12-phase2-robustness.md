@@ -302,7 +302,9 @@ for s in ('L','R'):
     print(s, 'glomeruli=', len(names), 'shape=', m.shape, 'synapses kept=', round(100*kept,1), '%')
 "
 ```
-Expected: `L glomeruli= 62 shape= (1865, 62) synapses kept= 98.9 %` and `R glomeruli= 61 shape= (1875, 61) synapses kept= 99.2 %` (percentages within 0.2 of these). If the glomerulus counts differ, stop and report rather than adjusting the plan.
+Expected: `L glomeruli= 62 shape= (1865, 62) synapses kept= 99.5 %` and `R glomeruli= 61 shape= (1875, 61) synapses kept= 99.6 %`. If the glomerulus counts differ, stop and report rather than adjusting the plan.
+
+Do not confuse three distinct quantities here. **Synapses kept** (the weight sum, 99.5%/99.6%) is what this check measures. The **edge** fraction whose source PN is uniglomerular is 98.9%/99.2%. The **nonzero-cell** count after aggregation is lower still, 96.2%/95.9%, because aggregation merges two sister PNs of one glomerulus landing on the same Kenyon cell into a single entry — about 4% of KC-glomerulus pairs receive such duplicated input.
 
 - [ ] **Step 6: Commit**
 
