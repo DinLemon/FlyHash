@@ -53,3 +53,49 @@ def encode(
     compressed = normalize(X) @ compressor
     activity = compressed @ projection.T.toarray()
     return winner_take_all(np.asarray(activity, dtype=np.float32), k)
+
+
+def apl_winner_take_all(
+    A: np.ndarray, k: int, apl_weights: np.ndarray, gain: float
+) -> sparse.csr_array:
+    """Winner-take-all with the fly's measured graded inhibition.
+
+    APL is a single giant inhibitory neuron that contacts every Kenyon cell,
+    but with synapse counts spanning roughly 6 to 160. It is driven by
+    Kenyon-cell spiking, which cannot be negative, so its drive is the row's
+    summed POSITIVE activity (Kenyon-cell activity here is signed, so summing
+    the raw, signed row would let the drive go negative and the term turn
+    excitatory instead of inhibitory). Each cell is suppressed in proportion
+    to both its own APL weight and that positive drive:
+
+        x_i - gain * w_i * sum(max(x, 0))
+
+    `gain * sum(max(x, 0))` is constant within a row, so what reorders the
+    ranking is the spread of w_i. At gain=0 this reduces exactly to plain
+    winner-take-all, which is the correctness check for the whole mechanism.
+    """
+    if apl_weights.shape[0] != A.shape[1]:
+        raise ValueError(
+            f"apl_weights has length {apl_weights.shape[0]}, expected {A.shape[1]}"
+        )
+    if gain == 0.0:
+        return winner_take_all(A, k)
+    drive = np.maximum(A, 0.0).sum(axis=1, keepdims=True)
+    inhibited = A - gain * drive * apl_weights[None, :]
+    return winner_take_all(np.asarray(inhibited, dtype=np.float32), k)
+
+
+def encode_with_apl(
+    X: np.ndarray,
+    compressor: np.ndarray,
+    projection: sparse.csr_array,
+    k: int,
+    apl_weights: np.ndarray,
+    gain: float,
+) -> sparse.csr_array:
+    """normalize -> compress -> project -> APL-gated winner-take-all."""
+    compressed = normalize(X) @ compressor
+    activity = compressed @ projection.T.toarray()
+    return apl_winner_take_all(
+        np.asarray(activity, dtype=np.float32), k, apl_weights, gain
+    )
