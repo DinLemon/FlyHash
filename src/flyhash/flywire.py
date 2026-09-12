@@ -93,6 +93,16 @@ def extract_flywire_circuit(
 
     kc_meta = kc_rows.set_index("root_id").loc[kc_keep]
     pn_meta = pn_rows.set_index("root_id").loc[pn_keep]
+
+    # Verify all surviving neurons have a valid side (L or R, not NaN from unmapped values)
+    kc_invalid = pd.isna(kc_meta["side"]).sum()
+    pn_invalid = pd.isna(pn_meta["side"]).sum()
+    if kc_invalid > 0 or pn_invalid > 0:
+        raise ValueError(
+            f"circuit contains {kc_invalid} Kenyon cells and {pn_invalid} "
+            f"projection neurons with unmapped side values"
+        )
+
     return Circuit(
         pn_to_kc=matrix,
         kc_ids=kc_keep.astype(np.int64),
