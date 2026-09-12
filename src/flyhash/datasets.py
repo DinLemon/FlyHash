@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import gzip
+import io
 import struct
+import tarfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -29,13 +32,13 @@ def read_idx_images(path: str | Path) -> np.ndarray:
     return flat.reshape(count, rows * cols)
 
 
-def _fetch(name: str, cache_dir: Path) -> Path:
+def _fetch_url(url: str, name: str, cache_dir: Path) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / name
     if not target.exists():
         temp_file = cache_dir / f"{name}.tmp"
         try:
-            urllib.request.urlretrieve(MNIST_BASE + name, temp_file)
+            urllib.request.urlretrieve(url, temp_file)
             temp_file.replace(target)
         except Exception:
             temp_file.unlink(missing_ok=True)
@@ -50,12 +53,69 @@ def load_mnist(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.
     first 1000 test images, so a query is never its own nearest neighbour.
     """
     cache = Path(cache_dir)
-    db = read_idx_images(_fetch(TRAIN_IMAGES, cache))[:DATABASE_SIZE]
+    db = read_idx_images(_fetch_url(MNIST_BASE + TRAIN_IMAGES, TRAIN_IMAGES, cache))[:DATABASE_SIZE]
     if db.shape[0] != DATABASE_SIZE:
         raise ValueError(f"Expected {DATABASE_SIZE} images in {TRAIN_IMAGES}, got {db.shape[0]}")
 
-    queries = read_idx_images(_fetch(TEST_IMAGES, cache))[:QUERY_COUNT]
+    queries = read_idx_images(_fetch_url(MNIST_BASE + TEST_IMAGES, TEST_IMAGES, cache))[:QUERY_COUNT]
     if queries.shape[0] != QUERY_COUNT:
         raise ValueError(f"Expected {QUERY_COUNT} images in {TEST_IMAGES}, got {queries.shape[0]}")
 
     return db, queries
+
+
+GLOVE_URL = "https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
+GLOVE_NAME = "glove.6B.zip"
+GLOVE_MEMBER = "glove.6B.50d.txt"
+SIFT_URL = "ftp://ftp.irisa.fr/local/texmex/corpus/siftsmall.tar.gz"
+SIFT_NAME = "siftsmall.tar.gz"
+SIFT_QUERY_COUNT = 100  # siftsmall ships 100 queries, not 1000
+
+
+def read_fvecs(path: str | Path) -> np.ndarray:
+    """Read a .fvecs file: each record is an int32 dimension then that many floats."""
+    raw = np.fromfile(path, dtype=np.int32)
+    if raw.size == 0:
+        raise ValueError(f"{path} is empty")
+    dim = int(raw[0])
+    if dim <= 0 or raw.size % (dim + 1) != 0:
+        raise ValueError(f"{path} has an inconsistent record dimension")
+    records = raw.reshape(-1, dim + 1)
+    if not np.all(records[:, 0] == dim):
+        raise ValueError(f"{path} has an inconsistent record dimension")
+    return records[:, 1:].copy().view(np.float32)
+
+
+def load_glove(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.ndarray]:
+    """First 11000 GloVe word vectors: 10000 database, 1000 queries."""
+    path = _fetch_url(GLOVE_URL, GLOVE_NAME, Path(cache_dir))
+    needed = DATABASE_SIZE + QUERY_COUNT
+    rows = []
+    with zipfile.ZipFile(path) as archive, archive.open(GLOVE_MEMBER) as member:
+        for raw in io.TextIOWrapper(member, encoding="utf-8"):
+            parts = raw.rstrip().split(" ")
+            rows.append([float(x) for x in parts[1:]])
+            if len(rows) == needed:
+                break
+    if len(rows) < needed:
+        raise ValueError(f"{path} holds {len(rows)} vectors, need {needed}")
+    arr = np.asarray(rows, dtype=np.float32)
+    return arr[:DATABASE_SIZE], arr[DATABASE_SIZE:needed]
+
+
+def load_sift(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.ndarray]:
+    """SIFT-small: 10000 base vectors and its 100 shipped queries."""
+    cache = Path(cache_dir)
+    archive = _fetch_url(SIFT_URL, SIFT_NAME, cache)
+    base = cache / "siftsmall" / "siftsmall_base.fvecs"
+    if not base.exists():
+        with tarfile.open(archive) as tar:
+            tar.extractall(cache)
+    db = read_fvecs(cache / "siftsmall" / "siftsmall_base.fvecs")[:DATABASE_SIZE]
+    queries = read_fvecs(cache / "siftsmall" / "siftsmall_query.fvecs")[:SIFT_QUERY_COUNT]
+    if db.shape[0] != DATABASE_SIZE:
+        raise ValueError(f"SIFT base holds {db.shape[0]} vectors, need {DATABASE_SIZE}")
+    return db, queries
+
+
+DATASETS = {"mnist": load_mnist, "glove": load_glove, "sift": load_sift}

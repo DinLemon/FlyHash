@@ -62,3 +62,50 @@ def test_load_mnist_rejects_a_short_file(tmp_path):
 
     with pytest.raises(ValueError, match="Expected"):
         load_mnist(cache_dir=tmp_path)
+
+
+import struct as _struct
+
+from flyhash.datasets import DATASETS, read_fvecs
+
+
+def test_read_fvecs_parses_dimension_prefixed_records(tmp_path):
+    path = tmp_path / "toy.fvecs"
+    with open(path, "wb") as f:
+        for row in ([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]):
+            f.write(_struct.pack("<i", 3))
+            f.write(_struct.pack("<3f", *row))
+    out = read_fvecs(path)
+    assert out.shape == (2, 3)
+    np.testing.assert_allclose(out, np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32))
+
+
+def test_read_fvecs_rejects_inconsistent_dimensions(tmp_path):
+    path = tmp_path / "bad.fvecs"
+    with open(path, "wb") as f:
+        f.write(_struct.pack("<i", 3))
+        f.write(_struct.pack("<3f", 1.0, 2.0, 3.0))
+        f.write(_struct.pack("<i", 2))
+        f.write(_struct.pack("<2f", 4.0, 5.0))
+    with pytest.raises(ValueError, match="dimension"):
+        read_fvecs(path)
+
+
+def test_dataset_registry_lists_all_three():
+    assert sorted(DATASETS) == ["glove", "mnist", "sift"]
+
+
+# These two use the project's real cache directory rather than tmp_path on
+# purpose: the GloVe archive is 862 MB and must not be re-downloaded per test.
+@pytest.mark.network
+def test_load_glove_shapes():
+    db, q = DATASETS["glove"]()
+    assert db.shape == (10000, 50)
+    assert q.shape == (1000, 50)
+
+
+@pytest.mark.network
+def test_load_sift_shapes():
+    db, q = DATASETS["sift"]()
+    assert db.shape == (10000, 128)
+    assert q.shape == (100, 128)
