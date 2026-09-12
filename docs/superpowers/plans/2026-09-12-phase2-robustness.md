@@ -318,7 +318,19 @@ cd "G:/C#/flyhash" && git add src/flyhash/glomeruli.py tests/test_glomeruli.py &
 
 Phase 1 used an idealised "keep the top k" rule. The real fly has one giant inhibitory neuron, APL, that touches every Kenyon cell but with weights spanning 6 to 160. This task replaces the abstraction with the measured inhibition while keeping the hash length fixed, so the result stays comparable to every other model.
 
-The rule is `x_i - gain * w_i * sum(x)`, then the same top-k. The `gain * sum(x)` factor is constant within a row, so what changes the ranking is the spread of `w_i`. Because the biological gain is unknown, it is swept rather than chosen; `gain=0` must reproduce Phase 1 exactly.
+The rule is `x_i - gain * w_i * drive`, then the same top-k, where `drive` is the row's total **positive** activity. The `gain * drive` factor is constant within a row, so what changes the ranking is the spread of `w_i`. Because the biological gain is unknown, it is swept rather than chosen; `gain=0` must reproduce Phase 1 exactly.
+
+**Two calibration facts, measured on the real circuit before this task was written — do not re-derive them, but do not contradict them either.**
+
+*The drive must be the positive activity, not the signed sum.* Kenyon-cell activity here is signed: mean −3.1, sd 14.2. Its signed row sum averages **−5775**, so `x_i - gain * w_i * sum(x)` would turn positive and *boost* the most strongly APL-connected cells instead of suppressing them. APL is driven by Kenyon-cell spiking, which cannot be negative, so the drive is `max(A, 0).sum(axis=1)` — always positive (minimum 1909 over 500 MNIST rows) and therefore always suppressive.
+
+*The gain range.* Overlap between the APL-gated selection and the plain top-k, measured on the left hemisphere over 500 MNIST rows:
+
+| gain | 0 | 1e-5 | 3e-5 | 1e-4 | 3e-4 | 5e-3 | 0.02 |
+|---|---|---|---|---|---|---|---|
+| overlap | 1.000 | 0.931 | 0.793 | 0.432 | 0.157 | 0.064 | 0.048 |
+
+Anything at or above 5e-3 is saturated — the selection is then dictated by APL weight alone and carries almost no information from the data. The swept values stop at 1e-4 for that reason.
 
 **Files:**
 - Modify: `src/flyhash/encode.py` (append)
@@ -357,7 +369,8 @@ def test_apl_wta_penalises_strongly_inhibited_units():
     # Two units with equal drive; the one with the larger APL weight loses.
     A = np.array([[1.0, 1.0, 0.5]], dtype=np.float32)
     w = np.array([1.0, 100.0, 1.0], dtype=np.float32)
-    out = apl_winner_take_all(A, k=2, apl_weights=w, gain=0.001).toarray()
+    # drive = 2.5, so gain must exceed 0.00201 for column 1 to actually lose.
+    out = apl_winner_take_all(A, k=2, apl_weights=w, gain=0.004).toarray()
     assert out[0, 0] == 1.0
     assert out[0, 1] == 0.0
     assert out[0, 2] == 1.0
@@ -410,8 +423,8 @@ def apl_winner_take_all(
         )
     if gain == 0.0:
         return winner_take_all(A, k)
-    totals = A.sum(axis=1, keepdims=True)
-    inhibited = A - gain * totals * apl_weights[None, :]
+    drive = np.maximum(A, 0.0).sum(axis=1, keepdims=True)
+    inhibited = A - gain * drive * apl_weights[None, :]
     return winner_take_all(np.asarray(inhibited, dtype=np.float32), k)
 
 
@@ -726,7 +739,7 @@ from flyhash.phase1 import (
 
 LEVELS = ("pn", "glom")
 HASH_FRACTIONS = (0.02, 0.05, 0.10, 0.20)
-APL_GAINS = (0.0, 0.005, 0.02, 0.05)
+APL_GAINS = (0.0, 1e-5, 3e-5, 1e-4)  # calibrated on the real circuit, see below
 
 # Baseline reproduces Phase 1 exactly.
 BASELINE = {"level": "pn", "hash_fraction": 0.05, "apl_gain": 0.0}
