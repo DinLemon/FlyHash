@@ -79,6 +79,20 @@ def verdict_margin_in_sd(
     return raw / std
 
 
+BORDERLINE_THRESHOLD_SD = 0.5
+
+
+def verdict_with_margin(
+    fly_map: float, shuffle_maps: list[float]
+) -> tuple[str, float, bool]:
+    """The pre-registered verdict plus its reporting-only margin and
+    borderline flag, computed the same way for every caller."""
+    verdict_label = verdict(fly_map, shuffle_maps)
+    margin_in_sd = verdict_margin_in_sd(verdict_label, fly_map, shuffle_maps)
+    borderline = abs(margin_in_sd) < BORDERLINE_THRESHOLD_SD
+    return verdict_label, margin_in_sd, borderline
+
+
 def run_hemisphere(
     circuit: Circuit,
     side: str,
@@ -122,8 +136,7 @@ def run_hemisphere(
         1.0,
     )
 
-    verdict_label = verdict(fly_map, shuffles)
-    margin_in_sd = verdict_margin_in_sd(verdict_label, fly_map, shuffles)
+    verdict_label, margin_in_sd, borderline = verdict_with_margin(fly_map, shuffles)
 
     return {
         "side": side,
@@ -141,7 +154,7 @@ def run_hemisphere(
         "n_shuffles_above": n_shuffles_above,
         "empirical_p_two_sided": float(empirical_p_two_sided),
         "verdict_margin_in_sd": margin_in_sd,
-        "verdict_borderline": abs(margin_in_sd) < 0.5,
+        "verdict_borderline": borderline,
     }
 
 

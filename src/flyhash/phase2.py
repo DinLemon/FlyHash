@@ -31,7 +31,7 @@ from flyhash.phase1 import (
     GAUSSIAN_SEED,
     SHUFFLE_SEED_BASE,
     UNIFORM_SEED,
-    verdict,
+    verdict_with_margin,
 )
 
 LEVELS = ("pn", "glom")
@@ -40,6 +40,11 @@ APL_GAINS = (0.0, 1e-5, 3e-5, 1e-4)  # calibrated on the real circuit, see below
 
 # Baseline reproduces Phase 1 exactly.
 BASELINE = {"level": "pn", "hash_fraction": 0.05, "apl_gain": 0.0}
+
+# Phase 1's pre-registered verdict, per hemisphere. Phase 2 asks whether
+# varying dataset, granularity, hash length, or WTA rule moves either
+# hemisphere away from this.
+PHASE1_VERDICT = {"L": "no_difference", "R": "fly_worse"}
 
 
 def sweep_conditions() -> list[dict]:
@@ -110,6 +115,7 @@ def run_condition(
     fly_map = score(fly)
     below = int(sum(1 for s in shuffles if s < fly_map))
     above = int(sum(1 for s in shuffles if s > fly_map))
+    verdict_label, margin_in_sd, borderline = verdict_with_margin(fly_map, shuffles)
     return {
         "side": side,
         "level": level,
@@ -118,6 +124,7 @@ def run_condition(
         "n_kc": int(n_kc),
         "n_channels": int(n_channels),
         "k": int(k),
+        "mean_claws": mean_claws,
         "fly": fly_map,
         "shuffled_mean": float(np.mean(shuffles)),
         "shuffled": shuffles,
@@ -125,7 +132,9 @@ def run_condition(
             uniform_projection(n_kc, n_channels, mean_claws, UNIFORM_SEED)
         ),
         "gaussian": score(dense_gaussian_projection(n_kc, n_channels, GAUSSIAN_SEED)),
-        "verdict": verdict(fly_map, shuffles),
+        "verdict": verdict_label,
+        "verdict_margin_in_sd": margin_in_sd,
+        "verdict_borderline": borderline,
         "n_shuffles_below": below,
         "n_shuffles_above": above,
         "empirical_p_two_sided": min(
@@ -156,19 +165,34 @@ def main(argv: list[str] | None = None) -> int:
             )
             row["dataset"] = name
             results.append(row)
+            if row["verdict_borderline"]:
+                marker = f" [BORDERLINE, {row['verdict_margin_in_sd']:.2f} SD]"
+            else:
+                marker = ""
             print(
-                f"{name:6s} {side} {level:5s} frac={fraction:.2f} gain={gain:.3f} "
+                f"{name:6s} {side} {level:5s} frac={fraction:.2f} gain={gain:.0e} "
                 f"fly={row['fly']:.4f} shuf={row['shuffled_mean']:.4f} "
-                f"{row['verdict']} p={row['empirical_p_two_sided']:.3f}",
+                f"{row['verdict']}{marker} p={row['empirical_p_two_sided']:.3f}",
                 flush=True,
             )
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(results, indent=2), encoding="utf-8")
 
-    flips = [r for r in results if r["verdict"] == "fly_better"]
+    matches = [r for r in results if r["verdict"] == PHASE1_VERDICT[r["side"]]]
+    differs = [r for r in results if r["verdict"] != PHASE1_VERDICT[r["side"]]]
+    fly_better = [r for r in results if r["verdict"] == "fly_better"]
+
     print(f"\nconditions run: {len(results)}")
-    print(f"conditions where the fly beat the shuffle: {len(flips)}")
+    print(f"conditions matching Phase 1's verdict for their hemisphere: {len(matches)}")
+    print(f"conditions that differ from Phase 1's verdict for their hemisphere: {len(differs)}")
+    for r in differs:
+        print(
+            f"  FLIP {r['dataset']:6s} {r['side']} {r['level']:5s} "
+            f"frac={r['hash_fraction']:.2f} gain={r['apl_gain']:.0e} "
+            f"phase1={PHASE1_VERDICT[r['side']]} phase2={r['verdict']}"
+        )
+    print(f"conditions where the fly beat the shuffle (fly_better): {len(fly_better)}")
     print(f"wrote {args.out}")
     return 0
 
