@@ -469,9 +469,15 @@ Phase 1 answered on MNIST alone. These are the other two datasets from the 2017 
 - Consumes: `read_idx_images`, `_fetch`, `DATABASE_SIZE`, `QUERY_COUNT` from Phase 1
 - Produces: `load_glove(cache_dir=...) -> tuple[np.ndarray, np.ndarray]` and `load_sift(cache_dir=...) -> tuple[np.ndarray, np.ndarray]`, both returning `(database, queries)` float32 with 10000 and 1000 rows, and `DATASETS: dict[str, Callable]` mapping `"mnist"`, `"glove"`, `"sift"` to their loaders.
 
-GloVe comes from `https://nlp.stanford.edu/data/glove.6B.zip` (822 MB) — too large. Use the 50-dimensional subset distributed as `glove.6B.50d.txt` inside it. To avoid the 822 MB download, fetch instead from `https://huggingface.co/stanfordnlp/glove/resolve/main/glove.6B.50d.txt` (171 MB, plain text, one word per line: the token then 50 floats).
+**Both source URLs below were verified working on 2026-09-12.** A standalone 50-dimensional GloVe file is not available without authentication, so the 50d vectors must be read out of the combined archive.
 
-SIFT-10K is the `siftsmall` set from `ftp://ftp.irisa.fr/local/texmex/corpus/siftsmall.tar.gz`; an HTTPS mirror is `https://huggingface.co/datasets/qbo-odp/sift1m/resolve/main/siftsmall.tar.gz`. It contains `siftsmall_base.fvecs` (10000 vectors, 128-d) and `siftsmall_query.fvecs` (100 queries). **Note the query count is 100, not 1000** — SIFT-small simply does not have 1000 queries. Use all 100 and record the deviation; do not pad or resample.
+GloVe: `https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip` — 862 182 613 bytes, containing `glove.6B.50d.txt`, `.100d`, `.200d` and `.300d`. Read the 50d member straight out of the zip with `zipfile.ZipFile(path).open("glove.6B.50d.txt")` rather than extracting the archive; each line is a token then 50 floats, space separated.
+
+SIFT: `ftp://ftp.irisa.fr/local/texmex/corpus/siftsmall.tar.gz` — 5 305 734 bytes, containing `siftsmall/siftsmall_base.fvecs` (10000 vectors, 128-d), `siftsmall/siftsmall_query.fvecs` (100 queries), plus learn and groundtruth files we do not use. `urllib.request.urlretrieve` handles the `ftp://` scheme.
+
+**Note the SIFT query count is 100, not 1000** — siftsmall simply does not ship 1000 queries. Use all 100 and record the deviation; do not pad or resample.
+
+**Both archives are already present in `data/datasets/`** — they were fetched ahead of this task, so `_fetch_url`'s existence check will skip the downloads entirely. Do not delete or re-download them.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -509,16 +515,18 @@ def test_dataset_registry_lists_all_three():
     assert sorted(DATASETS) == ["glove", "mnist", "sift"]
 
 
+# These two use the project's real cache directory rather than tmp_path on
+# purpose: the GloVe archive is 862 MB and must not be re-downloaded per test.
 @pytest.mark.network
-def test_load_glove_shapes(tmp_path):
-    db, q = DATASETS["glove"](cache_dir=tmp_path)
+def test_load_glove_shapes():
+    db, q = DATASETS["glove"]()
     assert db.shape == (10000, 50)
     assert q.shape == (1000, 50)
 
 
 @pytest.mark.network
-def test_load_sift_shapes(tmp_path):
-    db, q = DATASETS["sift"](cache_dir=tmp_path)
+def test_load_sift_shapes():
+    db, q = DATASETS["sift"]()
     assert db.shape == (10000, 128)
     assert q.shape == (100, 128)
 ```
@@ -531,9 +539,10 @@ Expected: collection error, `ImportError: cannot import name 'DATASETS'`
 - [ ] **Step 3: Append the implementation to `src/flyhash/datasets.py`**
 
 ```python
-GLOVE_URL = "https://huggingface.co/stanfordnlp/glove/resolve/main/glove.6B.50d.txt"
-GLOVE_NAME = "glove.6B.50d.txt"
-SIFT_URL = "https://huggingface.co/datasets/qbo-odp/sift1m/resolve/main/siftsmall.tar.gz"
+GLOVE_URL = "https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
+GLOVE_NAME = "glove.6B.zip"
+GLOVE_MEMBER = "glove.6B.50d.txt"
+SIFT_URL = "ftp://ftp.irisa.fr/local/texmex/corpus/siftsmall.tar.gz"
 SIFT_NAME = "siftsmall.tar.gz"
 SIFT_QUERY_COUNT = 100  # siftsmall ships 100 queries, not 1000
 
@@ -557,9 +566,9 @@ def load_glove(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.
     path = _fetch_url(GLOVE_URL, GLOVE_NAME, Path(cache_dir))
     needed = DATABASE_SIZE + QUERY_COUNT
     rows = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            parts = line.rstrip().split(" ")
+    with zipfile.ZipFile(path) as archive, archive.open(GLOVE_MEMBER) as member:
+        for raw in io.TextIOWrapper(member, encoding="utf-8"):
+            parts = raw.rstrip().split(" ")
             rows.append([float(x) for x in parts[1:]])
             if len(rows) == needed:
                 break
@@ -587,7 +596,7 @@ def load_sift(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.n
 DATASETS = {"mnist": load_mnist, "glove": load_glove, "sift": load_sift}
 ```
 
-Also add `import tarfile` to the module's imports, and refactor the existing `_fetch(name, cache_dir)` into `_fetch_url(url, name, cache_dir)` keeping its atomic temp-file-and-rename behaviour exactly as it is; update `load_mnist`'s two call sites to pass `MNIST_BASE + name`.
+Also add `import io`, `import tarfile` and `import zipfile` to the module's imports, and refactor the existing `_fetch(name, cache_dir)` into `_fetch_url(url, name, cache_dir)` keeping its atomic temp-file-and-rename behaviour exactly as it is; update `load_mnist`'s two call sites to pass `MNIST_BASE + name`.
 
 - [ ] **Step 4: Run the offline tests, then the network ones**
 
