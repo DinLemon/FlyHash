@@ -1,7 +1,7 @@
 # Фаза 1: результаты и отклонения от предрегистрации
 
 **Дата прогона:** 2026-09-11
-**Спек:** [`specs/2026-09-11-flyhash-connectome-design.md`](specs/2026-09-11-flyhash-connectome-design.md)
+**Спек:** [`spec.md`](spec.md)
 **Данные:** male-cns v1.0 (Janelia FlyEM), CC-BY
 **Воспроизведение:** `python -m flyhash.phase1` — около 20 минут, без скачивания гигабайта (схема лежит в `data/circuit.npz`)
 
