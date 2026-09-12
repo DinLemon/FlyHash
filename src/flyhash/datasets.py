@@ -67,6 +67,7 @@ def load_mnist(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.
 GLOVE_URL = "https://downloads.cs.stanford.edu/nlp/data/glove.6B.zip"
 GLOVE_NAME = "glove.6B.zip"
 GLOVE_MEMBER = "glove.6B.50d.txt"
+GLOVE_DIM = 50
 SIFT_URL = "ftp://ftp.irisa.fr/local/texmex/corpus/siftsmall.tar.gz"
 SIFT_NAME = "siftsmall.tar.gz"
 SIFT_QUERY_COUNT = 100  # siftsmall ships 100 queries, not 1000
@@ -92,9 +93,12 @@ def load_glove(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.
     needed = DATABASE_SIZE + QUERY_COUNT
     rows = []
     with zipfile.ZipFile(path) as archive, archive.open(GLOVE_MEMBER) as member:
-        for raw in io.TextIOWrapper(member, encoding="utf-8"):
+        for line_num, raw in enumerate(io.TextIOWrapper(member, encoding="utf-8"), 1):
             parts = raw.rstrip().split(" ")
-            rows.append([float(x) for x in parts[1:]])
+            values = [float(x) for x in parts[1:]]
+            if len(values) != GLOVE_DIM:
+                raise ValueError(f"{path} line {line_num}: expected {GLOVE_DIM} values, got {len(values)}")
+            rows.append(values)
             if len(rows) == needed:
                 break
     if len(rows) < needed:
@@ -110,11 +114,13 @@ def load_sift(cache_dir: str | Path = "data/datasets") -> tuple[np.ndarray, np.n
     base = cache / "siftsmall" / "siftsmall_base.fvecs"
     if not base.exists():
         with tarfile.open(archive) as tar:
-            tar.extractall(cache)
+            tar.extractall(cache, filter="data")
     db = read_fvecs(cache / "siftsmall" / "siftsmall_base.fvecs")[:DATABASE_SIZE]
     queries = read_fvecs(cache / "siftsmall" / "siftsmall_query.fvecs")[:SIFT_QUERY_COUNT]
     if db.shape[0] != DATABASE_SIZE:
         raise ValueError(f"SIFT base holds {db.shape[0]} vectors, need {DATABASE_SIZE}")
+    if queries.shape[0] != SIFT_QUERY_COUNT:
+        raise ValueError(f"{cache / 'siftsmall' / 'siftsmall_query.fvecs'} holds {queries.shape[0]} vectors, need {SIFT_QUERY_COUNT}")
     return db, queries
 
 

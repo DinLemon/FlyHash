@@ -1,17 +1,23 @@
 import gzip
+import io
 import struct
+import zipfile
 
 import numpy as np
 import pytest
 
 from flyhash.datasets import (
     load_mnist,
+    load_glove,
     read_idx_images,
     TRAIN_IMAGES,
     TEST_IMAGES,
     DATABASE_SIZE,
     QUERY_COUNT,
     IDX_IMAGE_MAGIC,
+    GLOVE_NAME,
+    GLOVE_MEMBER,
+    GLOVE_DIM,
 )
 
 
@@ -109,3 +115,16 @@ def test_load_sift_shapes():
     db, q = DATASETS["sift"]()
     assert db.shape == (10000, 128)
     assert q.shape == (100, 128)
+
+
+def test_load_glove_rejects_a_wrong_width_line(tmp_path):
+    """Test that load_glove rejects lines with incorrect dimension count."""
+    # Create a tiny zip file with a malformed glove.6B.50d.txt
+    zip_path = tmp_path / GLOVE_NAME
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        # First line has token plus only 3 floats instead of GLOVE_DIM=50
+        glove_content = "word 1.0 2.0 3.0\n"
+        archive.writestr(GLOVE_MEMBER, glove_content)
+
+    with pytest.raises(ValueError, match="expected 50 values, got 3"):
+        load_glove(cache_dir=tmp_path)
