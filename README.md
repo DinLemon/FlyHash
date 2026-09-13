@@ -128,6 +128,22 @@ Since degree-matched random wiring performs **as well or better** than the measu
 
 That is a practical licence to simplify. The idealised model in the paper is not an approximation you are settling for; it is at least as good as the real thing.
 
+So the library in this repository ships **random wiring by default** — not as a shortcut, but as the conclusion:
+
+```python
+from flyhash.hash import SimilaritySearch, FlyHasher, find_duplicates
+
+index = SimilaritySearch.build(vectors)          # 784 inputs -> 15680 cells, 784 active
+neighbours, overlap = index.query(queries, k=10)  # ~1.6 ms per query
+
+find_duplicates(vectors, threshold=0.9)           # (i, j, similarity) triples
+
+FlyHasher.random(n_inputs=300, n_cells=4000, n_claws=6, sparsity=0.05)
+FlyHasher.from_circuit(circuit)                   # the measured wiring, for reproduction only
+```
+
+On 5000 MNIST digits that reaches **recall@10 of 0.62** against exact search, at 1.6 ms per query. `from_circuit` exists so the comparison in this repository can be reproduced — it is not the recommended way to build a hasher.
+
 ### 2. A reusable method for "is this circuit special?"
 
 The interesting reusable asset is not the answer, it is the machinery. Connectomics keeps producing claims of the form *"this circuit is wired for X"*, and they are usually argued from anatomy alone. The pattern here is transferable to any of them:
@@ -211,6 +227,7 @@ To rebuild the circuits from raw connectome data, fetch the source files into `d
 | `src/flyhash/models.py` | the five projection models, including the degree-preserving shuffle |
 | `src/flyhash/encode.py` | normalise → compress → project → winner-take-all |
 | `src/flyhash/bench.py` | exact ground truth and mAP@100 |
+| `src/flyhash/hash.py` | the library: encode, similarity search, duplicate finding |
 | `src/flyhash/phase1/2/3.py` | the three experiments |
 | `scripts/odour_experiment.py` | the native-odour test, with channel identity preserved |
 | `results/` | every number reported here |
