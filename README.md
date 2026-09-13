@@ -194,6 +194,7 @@ To rebuild the circuits from raw connectome data, fetch the source files into `d
 |---|---|---|---|
 | male-CNS v1.0 | male, whole central nervous system | [Janelia FlyEM](https://male-cns.janelia.org/download/) | CC-BY 4.0 |
 | FAFB v783 | female, brain | [FlyWire](https://codex.flywire.ai/) | CC-BY-NC 4.0 |
+| Odorant responses | 110 odorants x 24 receptors | Hallem & Carlson 2006, *Cell* 125:143, via the [DoOR database](https://neuro.uni-konstanz.de/DoOR/) ([ropensci/DoOR.data](https://github.com/ropensci/DoOR.data)) | see DoOR |
 
 Both are the work of large collaborations and must be cited accordingly — see [FlyWire's citation guidance](https://codex.flywire.ai/about_flywire) and the Janelia download page.
 

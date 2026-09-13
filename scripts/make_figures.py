@@ -270,8 +270,88 @@ def main() -> int:
     fig_effect_against_biological_noise()
     fig_apl_gain()
     fig_replication()
+    fig_odour()
     return 0
 
+
+
+# ---------------------------------------------------------------- figure 6
+
+HEMI_COLOUR = {("male", "L"): BLUE, ("male", "R"): ORANGE,
+               ("female", "L"): AQUA, ("female", "R"): "#eda100"}
+
+
+def fig_odour() -> None:
+    """The circuit's own modality, with channel identity preserved."""
+    rows = json.loads((RESULTS / "odour-experiment.json").read_text(encoding="utf-8"))
+    matched = json.loads(
+        (RESULTS / "odour-vs-mnist-matched.json").read_text(encoding="utf-8")
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.4), dpi=150,
+                             gridspec_kw={"width_ratios": [1.45, 1.0]})
+    fig.patch.set_facecolor(SURFACE)
+    for ax in axes:
+        style(ax)
+
+    ax = axes[0]
+    fractions = sorted({r["hash_fraction"] for r in rows})
+    ax.axhspan(-1.96, 1.96, color=BLUE, alpha=0.07, zorder=0)
+    for edge in (-1.96, 1.96):
+        ax.axhline(edge, color=INK_MUTED, linewidth=1.0,
+                   linestyle=(0, (4, 3)), zorder=1)
+    for animal in ("male", "female"):
+        for side in ("L", "R"):
+            series = sorted(
+                (r for r in rows if r["animal"] == animal and r["side"] == side),
+                key=lambda r: r["hash_fraction"],
+            )
+            colour = HEMI_COLOUR[(animal, side)]
+            zs = [r["z"] for r in series]
+            ax.plot(range(len(zs)), zs, color=colour, linewidth=2.0, zorder=3)
+            ax.scatter(range(len(zs)), zs, s=50, color=colour,
+                       edgecolor=SURFACE, linewidth=1.4, zorder=4)
+            ax.text(len(zs) - 1 + 0.08, zs[-1], f"{animal} {side}", color=colour,
+                    fontsize=10, fontweight="bold", va="center", ha="left")
+    ax.set_xticks(range(len(fractions)), [f"{int(f*100)}%" for f in fractions],
+                  fontsize=10)
+    ax.set_xlim(-0.15, len(fractions) - 0.35)
+    ax.set_xlabel("fraction of Kenyon cells kept active", fontsize=10, color=INK_SOFT)
+    ax.set_ylabel("fly minus shuffle, in null SDs", fontsize=10, color=INK_SOFT)
+    ax.set_title("One spike, and it does not survive a change of sparsity",
+                 fontsize=12, color=INK, pad=12, loc="left", fontweight="bold")
+
+    ax = axes[1]
+    labels, flies, shufs = [], [], []
+    for key, label in (("odour", "odours\n(native, 23 channels)"),
+                       ("mnist", "MNIST\n(via random compressor)")):
+        labels.append(label)
+        flies.append(matched[key]["fly"])
+        shufs.append(float(np.mean(matched[key]["shuffled"])))
+    positions = np.arange(len(labels))
+    ax.bar(positions - 0.19, flies, width=0.34, color=BLUE, zorder=3,
+           label="measured wiring")
+    ax.bar(positions + 0.19, shufs, width=0.34, color=INK_MUTED, zorder=3,
+           label="degree-preserving shuffle")
+    for x, v in zip(positions - 0.19, flies):
+        ax.text(x, v + 0.012, f"{v:.3f}", ha="center", fontsize=10, color=INK,
+                fontweight="bold")
+    for x, v in zip(positions + 0.19, shufs):
+        ax.text(x, v + 0.012, f"{v:.3f}", ha="center", fontsize=10, color=INK_SOFT)
+    ax.set_xticks(positions, labels, fontsize=10, color=INK_SOFT)
+    ax.set_ylim(0, max(flies + shufs) * 1.22)
+    ax.set_ylabel("mAP@10  (110 items, matched difficulty)", fontsize=10,
+                  color=INK_SOFT)
+    ax.grid(axis="x", visible=False)
+    ax.legend(loc="upper right", frameon=False, fontsize=9.5, labelcolor=INK_SOFT)
+    ax.set_title("Native data lifts both — it does not favour the fly",
+                 fontsize=12, color=INK, pad=12, loc="left", fontweight="bold")
+
+    fig.suptitle(
+        "The decisive test: the circuit's own modality, with channel identity intact",
+        fontsize=13.5, color=INK, fontweight="bold", x=0.075, ha="left", y=1.04,
+    )
+    save(fig, "fig6-odour.png")
 
 if __name__ == "__main__":
     raise SystemExit(main())
