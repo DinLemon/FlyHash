@@ -17,6 +17,7 @@ good reason not to: random wiring frees you to pick any dimensions you like.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from scipy import sparse
@@ -110,6 +111,13 @@ class FlyHasher:
         recommended way to build a hasher: across every condition tested, the
         measured wiring did no better than :meth:`random`, and it pins you to
         the fly's dimensions.
+
+        Unlike :meth:`random`, where every cell samples exactly ``n_claws``
+        inputs, here the number of inputs per cell follows the circuit's real
+        wiring and varies from cell to cell (2 to 13 in the measured data).
+        Swapping one hasher for the other is not a drop-in change: activity
+        statistics will differ. ``n_cells`` and ``n_inputs`` are also fixed by
+        the circuit's shape, not chosen by the caller.
         """
         binary = circuit.binary()
         hash_length = max(1, int(np.floor(sparsity * binary.shape[0] + 0.5)))
@@ -136,8 +144,15 @@ class FlyHasher:
         # code depend on the pattern across inputs rather than overall intensity.
         means = X.mean(axis=1, keepdims=True)
         normalised = X / np.where(means == 0.0, 1.0, means)
+        # `normalised @ self.projection.T.toarray()` reads more directly, but
+        # `.toarray()` would densify the (n_cells, n_inputs) projection on
+        # every call. With the documented default n_cells = 20 * n_inputs,
+        # that is a huge, repeated allocation for no benefit — scipy sparse
+        # matrices support `sparse @ dense`, so computing it the other way
+        # round keeps the projection sparse throughout and returns the same
+        # (n_samples, n_cells) result.
         activity = np.asarray(
-            normalised @ self.projection.T.toarray(), dtype=np.float32
+            (self.projection @ normalised.T).T, dtype=np.float32
         )
         k = self.hash_length
         top = np.argpartition(-activity, kth=k - 1, axis=1)[:, :k]
@@ -146,6 +161,28 @@ class FlyHasher:
             (np.ones(rows.size, dtype=np.float32), (rows, top.reshape(-1))),
             shape=(X.shape[0], self.n_cells),
         )
+
+    def save(self, path: str | Path) -> None:
+        """Save this hasher's wiring so it can be reloaded with :meth:`load`."""
+        m = self.projection.tocoo()
+        np.savez_compressed(
+            path,
+            rows=m.row.astype(np.int64),
+            cols=m.col.astype(np.int64),
+            vals=m.data.astype(np.float32),
+            shape=np.array(m.shape, dtype=np.int64),
+            hash_length=np.array(self.hash_length, dtype=np.int64),
+        )
+
+    @classmethod
+    def load(cls, path: str | Path) -> FlyHasher:
+        """Load a hasher saved with :meth:`save`."""
+        z = np.load(path, allow_pickle=False)
+        shape = tuple(int(x) for x in z["shape"])
+        projection = sparse.csr_array(
+            (z["vals"].astype(np.float32), (z["rows"], z["cols"])), shape=shape
+        )
+        return cls(projection=projection, hash_length=int(z["hash_length"]))
 
 
 class SimilaritySearch:
@@ -213,6 +250,11 @@ def find_duplicates(
 
     Returns:
         ``(i, j, similarity)`` triples with ``i < j``, strongest first.
+
+    This builds a dense (n_samples, n_samples) float64 similarity matrix, so
+    memory cost is quadratic in ``n_samples``: about 800 MB at 10,000 rows and
+    roughly 8 GB at 30,000. Past a few tens of thousands of rows this becomes
+    impractical; consider batching or an approximate approach instead.
     """
     if not 0.0 <= threshold <= 1.0:
         raise ValueError(f"threshold must be between 0 and 1, got {threshold}")

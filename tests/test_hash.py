@@ -52,6 +52,48 @@ def test_encode_ignores_overall_scale():
     )
 
 
+def test_encode_is_unchanged_by_the_sparse_path():
+    """encode() computes activity via a sparse-times-dense product to avoid
+    densifying the projection; this pins that result to the more obvious
+    dense formulation, computed independently here."""
+    h = FlyHasher.random(20, 400, seed=0)
+    X = np.random.default_rng(5).random((6, 20)).astype(np.float32)
+
+    means = X.mean(axis=1, keepdims=True)
+    normalised = X / np.where(means == 0.0, 1.0, means)
+    activity = np.asarray(normalised @ h.projection.T.toarray(), dtype=np.float32)
+    k = h.hash_length
+    top = np.argpartition(-activity, kth=k - 1, axis=1)[:, :k]
+    expected = np.zeros((X.shape[0], h.n_cells), dtype=np.float32)
+    for row, cols in enumerate(top):
+        expected[row, cols] = 1.0
+
+    np.testing.assert_array_equal(h.encode(X).toarray(), expected)
+
+
+def test_encode_ignores_scale_for_vectors_with_negative_entries():
+    """Scale invariance must also hold when rows contain negative entries and
+    a non-zero mean, not just all-positive data."""
+    h = FlyHasher.random(16, 320, seed=0)
+    X = np.random.default_rng(6).random((4, 16)) * 4 - 1.0  # mix of signs
+    np.testing.assert_array_equal(
+        h.encode(X).toarray(), h.encode(X * 7.5).toarray()
+    )
+
+
+def test_save_load_roundtrip(tmp_path):
+    h = FlyHasher.random(20, 400, n_claws=6, seed=0)
+    path = tmp_path / "hasher.npz"
+    h.save(path)
+    loaded = FlyHasher.load(path)
+
+    assert loaded.hash_length == h.hash_length
+    np.testing.assert_array_equal(loaded.projection.toarray(), h.projection.toarray())
+
+    X = np.random.default_rng(7).random((5, 20)).astype(np.float32)
+    np.testing.assert_array_equal(h.encode(X).toarray(), loaded.encode(X).toarray())
+
+
 def test_encode_survives_an_all_zero_row():
     h = FlyHasher.random(12, 240, seed=0)
     X = np.zeros((2, 12), dtype=np.float32)
