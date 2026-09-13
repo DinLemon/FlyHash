@@ -1,8 +1,8 @@
 # FlyHash on measured wiring
 
-**Does the real wiring of a fruit fly's brain hash data better than random wiring?**
+**Does the measured wiring of a fruit fly's mushroom body hash data better than a random rewiring of itself?**
 
-Short answer: **no.** And where it differs, it is very slightly *worse*.
+Short answer: **no** — in a static, rate-based model of the kind the claim under test is itself built on. Where it differs, it is very slightly *worse*.
 
 This repository tests a well-known claim from neuroscience against two real connectomes, with the evaluation criteria fixed in writing before the first run. The result is negative, reproduced in a second animal of the other sex, and small enough to be swamped by the difference between one fly's own left and right brain hemispheres.
 
@@ -42,7 +42,7 @@ The effect is real but tiny, and the right way to see how tiny is to measure it 
 
 A fly's left and right mushroom bodies are two copies of one genetic program, grown in the same head from the same genome. **They differ from each other more than the real wiring differs from a random rewiring of itself.**
 
-So: whatever the specific PN→KC partner choices are for, it is not nearest-neighbour retrieval.
+So whatever the specific PN→KC partner choices are for, this model cannot see them helping nearest-neighbour retrieval. That is a statement about this wiring diagram under this model — not about what the living circuit does.
 
 ---
 
@@ -95,6 +95,20 @@ Of 16 conditions, exactly one reaches significance: the male right hemisphere at
 Native data *does* matter for performance — at matched difficulty it lifts mAP from 0.41 to 0.60 — but it lifts the degree-preserving shuffle just as much. **Modality changes how well the circuit works; it does not change whether the real wiring beats random.**
 
 This is the strongest form of the result. The obvious objection to any negative finding here — *you fed it the wrong data through the wrong door* — no longer applies.
+
+---
+
+## The wiring *is* structured — just not for this
+
+The natural objection to all of the above is that a static model is the wrong instrument, so a null says nothing. That objection cannot be tested head-on: no public dataset gives odorant-by-glomerulus spike latencies, without which coincidence detection cannot be modelled honestly.
+
+So the question was reframed to need neither the task nor the dynamics. **Do Kenyon cells sample glomeruli in a pattern a degree-preserving shuffle would not produce?** That is about the wiring alone.
+
+They do, in **all four hemispheres of both animals**, under two correlation measures, against a shuffle that preserves each cell's exact number of measured inputs (z = +2.3 to +4.5). The strongest motif, DM2–DM4, is among the top three pairs in every hemisphere: 61–72 cells sample that pair together where 34–46 are expected. Both glomeruli carry fruit esters. The pheromone pair VA1v–VA1d is strong in the male (z ≈ +6) and weak in the female — suggestive of sexual dimorphism, though two animals is not a sample.
+
+But the structure is **not** "wire correlated inputs together": that correlation is only r ≈ 0.09. And its direction is the opposite of what efficient coding predicts — cells pool inputs that respond *alike*, raising redundancy rather than decorrelating.
+
+Which resolves the apparent contradiction. The wiring is tuned, measurably. It is simply not tuned for nearest-neighbour retrieval, and a benchmark built on response statistics cannot see a structure organised by something else. That is a limitation of the question, not only of the model.
 
 ---
 
@@ -184,6 +198,7 @@ Knowing the size of the *absence* is useful. Any future claim that connectome st
 - **Not** that the mushroom body is unstructured. It is measured against *one* task. Partner choice may well be tuned for odour discrimination, learning, or valence assignment — none of which this tests.
 - **Not** a refutation of the 2017 paper's FlyHash-versus-LSH comparison. The "LSH" baseline here is a dense Gaussian projection through the same top-k sparsification, **not** the sign-bit Hamming LSH of the literature. That comparison is untested here, in either direction.
 - **Not** a full olfactory test. The odour experiment uses 23 of the fly's ~50 glomeruli and a database of only 110 odorants — the entire published set, but two orders of magnitude smaller than the other benchmarks.
+- **Not** a simulation of a fly. The model is static and rate-based: no spike timing, no membrane time constants, no adaptation, and APL as a one-shot selection rather than a continuous feedback loop. Kenyon cells are coincidence detectors in life, and that is absent here. A signal pushed through a bare adjacency matrix is not the behaviour of the animal — a limitation this field has known since Bargmann & Marder. Note, though, that the hypothesis under test is itself a static algorithm, so it is tested in its own terms, and that both arms of every comparison run through the identical model.
 - **Not** independent evidence 86 times over. The conditions share a circuit, a compression matrix and a dataset; they are one property measured repeatedly.
 
 Every deviation from the pre-registered plan is listed in [FINDINGS.md](docs/FINDINGS.md) — including a Euclidean ground truth where cosine was specified for GloVe, and a mean-normalisation step that is pathological on GloVe vectors (4815 of 10000 have a negative mean and get sign-flipped).
@@ -205,6 +220,7 @@ python -m flyhash.phase2              # ~75 min — 48 robustness conditions
 python -m flyhash.phase3              # ~20 min — male versus female
 python scripts/threshold_sweep.py     # ~15 min — synapse-weight thresholds
 python scripts/odour_experiment.py    # ~3 min  — the fly's own modality
+python scripts/wiring_structure.py    # ~4 min  — is the wiring structured at all?
 python scripts/make_figures.py        # the figures above
 python scripts/make_gif.py            # the animation
 ```
@@ -230,6 +246,7 @@ To rebuild the circuits from raw connectome data, fetch the source files into `d
 | `src/flyhash/hash.py` | the library: encode, similarity search, duplicate finding |
 | `src/flyhash/phase1/2/3.py` | the three experiments |
 | `scripts/odour_experiment.py` | the native-odour test, with channel identity preserved |
+| `scripts/wiring_structure.py` | structure test needing neither task nor dynamics |
 | `results/` | every number reported here |
 | `docs/spec.md` | the pre-registered design, written before any run |
 | `docs/FINDINGS.md` | results, deviations and caveats in full |
