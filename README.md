@@ -29,10 +29,10 @@ If evolution tuned those partner choices for anything like similarity search, it
 ## The answer
 
 <p align="center">
-  <img src="docs/figures/fig1-effect-against-null.png" alt="Across 70 conditions, the measured wiring sits at or below its own null distribution, with a median of -1.17 standard deviations" width="100%">
+  <img src="docs/figures/fig1-effect-against-null.png" alt="Across 86 conditions spanning four phases, the measured wiring sits at or below its own null distribution far more often than above" width="100%">
 </p>
 
-Across **70 conditions** — four synapse thresholds, three datasets, two input granularities, four hash lengths, four inhibition strengths, two animals — the measured wiring landed *below* its own null distribution 21 times and *above* it twice. The median sits 1.17 standard deviations on the wrong side of zero.
+Across **86 conditions** — four synapse thresholds, four datasets including the fly's own odour repertoire, two input granularities, four hash lengths, four inhibition strengths, two animals — the measured wiring landed *below* its own null distribution far more often than above. It fell below the band **21 times** and above it **3**; the median sits 0.73 standard deviations on the wrong side of zero.
 
 The effect is real but tiny, and the right way to see how tiny is to measure it against the fly's own biology:
 
@@ -67,6 +67,34 @@ The shuffle was verified to reach equilibrium, not merely to look shuffled: over
 The whole pipeline was re-run on the [FlyWire](https://flywire.ai/) **female** brain, reconstructed by a different laboratory (Princeton) from a different electron-microscopy volume. Zero conditions favoured the fly in either animal.
 
 This required care: FlyWire's published connection table is effectively thresholded at 5 synapses per pair, while the male dataset was processed at 3. Comparing them directly would have **confounded sex with the edge-inclusion criterion** and produced what looked like a biological difference. The male is therefore compared at a matched threshold of 5.
+
+---
+
+## Closing the biggest hole: testing it on smells
+
+Everything above — and the 2017 paper too — pushes images or word vectors through an *olfactory* circuit using a random compressor. That compressor is a problem nobody had named:
+
+> After a random projection from 784 pixels to 149 projection neurons, **neuron #37 carries a random mixture of every pixel and means nothing.** If the real wiring says "this Kenyon cell samples glomeruli DA1, VA1v and DM1 because those odours co-occur," that structure is meaningless once the channels are scrambled — and a shuffle cannot destroy what is already destroyed.
+
+So the experiment was structurally incapable of detecting wiring tuned to specific input channels. The comparison stayed fair, but a whole region where the effect could live had been cut out of it.
+
+**So we ran it on the circuit's actual job.** Real odour responses — [Hallem & Carlson 2006](https://www.cell.com/fulltext/S0092-8674(06)00363-1), 110 odorants against 24 receptors — with the mapping kept exact: receptor Or22a feeds glomerulus DM2, which feeds the projection neurons the connectome calls DM2. No compressor. All 23 unambiguous channels are present in all four hemispheres of both animals.
+
+<p align="center">
+  <img src="docs/figures/fig6-odour.png" alt="Of 16 conditions only one is significant, and it vanishes when sparsity changes; native odour data lifts the fly and the shuffle alike" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/figures/null-forming.gif" alt="Shuffles accumulate into the null distribution: at 5% sparsity the fly sits outside it, at 10% it sits in the middle" width="100%">
+</p>
+
+The animation is the study's whole method in one loop. Degree-preserving shuffles accumulate into the null distribution while the measured wiring's score stays fixed. On the left it looks like a discovery; on the right — same fly, same smells, one dial moved — it is nothing.
+
+Of 16 conditions, exactly one reaches significance: the male right hemisphere at 5% sparsity, where **all 200 of 200 shuffles score below the fly** (z = +3.42). It looks like a discovery until you move one dial — at 10% sparsity the same hemisphere scores **z = −0.00**, and the same animal's left hemisphere runs negative throughout. A real advantage in wiring does not evaporate because you changed the sparsity from 5% to 10%.
+
+Native data *does* matter for performance — at matched difficulty it lifts mAP from 0.41 to 0.60 — but it lifts the degree-preserving shuffle just as much. **Modality changes how well the circuit works; it does not change whether the real wiring beats random.**
+
+This is the strongest form of the result. The obvious objection to any negative finding here — *you fed it the wrong data through the wrong door* — no longer applies.
 
 ---
 
@@ -139,7 +167,8 @@ Knowing the size of the *absence* is useful. Any future claim that connectome st
 - **Not** that FlyHash fails. It works; it just does not need the real wiring.
 - **Not** that the mushroom body is unstructured. It is measured against *one* task. Partner choice may well be tuned for odour discrimination, learning, or valence assignment — none of which this tests.
 - **Not** a refutation of the 2017 paper's FlyHash-versus-LSH comparison. The "LSH" baseline here is a dense Gaussian projection through the same top-k sparsification, **not** the sign-bit Hamming LSH of the literature. That comparison is untested here, in either direction.
-- **Not** independent evidence 70 times over. The conditions share a circuit, a compression matrix and a dataset; they are one property measured repeatedly.
+- **Not** a full olfactory test. The odour experiment uses 23 of the fly's ~50 glomeruli and a database of only 110 odorants — the entire published set, but two orders of magnitude smaller than the other benchmarks.
+- **Not** independent evidence 86 times over. The conditions share a circuit, a compression matrix and a dataset; they are one property measured repeatedly.
 
 Every deviation from the pre-registered plan is listed in [FINDINGS.md](docs/FINDINGS.md) — including a Euclidean ground truth where cosine was specified for GloVe, and a mean-normalisation step that is pathological on GloVe vectors (4815 of 10000 have a negative mean and get sign-flipped).
 
@@ -159,7 +188,9 @@ python -m flyhash.phase1              # ~11 min — the core comparison, MNIST
 python -m flyhash.phase2              # ~75 min — 48 robustness conditions
 python -m flyhash.phase3              # ~20 min — male versus female
 python scripts/threshold_sweep.py     # ~15 min — synapse-weight thresholds
+python scripts/odour_experiment.py    # ~3 min  — the fly's own modality
 python scripts/make_figures.py        # the figures above
+python scripts/make_gif.py            # the animation
 ```
 
 Timings are from one desktop machine; they scale with the number of shuffles, which every runner exposes as `--shuffles`.
@@ -181,6 +212,7 @@ To rebuild the circuits from raw connectome data, fetch the source files into `d
 | `src/flyhash/encode.py` | normalise → compress → project → winner-take-all |
 | `src/flyhash/bench.py` | exact ground truth and mAP@100 |
 | `src/flyhash/phase1/2/3.py` | the three experiments |
+| `scripts/odour_experiment.py` | the native-odour test, with channel identity preserved |
 | `results/` | every number reported here |
 | `docs/spec.md` | the pre-registered design, written before any run |
 | `docs/FINDINGS.md` | results, deviations and caveats in full |

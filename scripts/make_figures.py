@@ -84,8 +84,9 @@ def fig_effect_against_null() -> None:
         ("Phase 2 — 48 sweep conditions", load("phase2-sweeps.json")),
         ("Phase 2 — synapse thresholds", load("phase2-threshold-sweep.json")),
         ("Phase 3 — two animals", load("phase3-replication.json")),
+        ("Phase 4 — native odours", load("odour-experiment.json")),
     ]
-    fig, ax = figure(9.5, 4.6)
+    fig, ax = figure(9.5, 5.3)
     rng = np.random.default_rng(0)
 
     ax.axvspan(-1.96, 1.96, color=BLUE, alpha=0.07, zorder=0)
