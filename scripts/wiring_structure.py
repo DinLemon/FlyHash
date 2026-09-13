@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from itertools import combinations
 from pathlib import Path
 
@@ -42,7 +43,11 @@ from flyhash.circuit import Circuit
 from flyhash.glomeruli import aggregate_by_glomerulus
 from flyhash.models import shuffled_projection
 
-from odour_experiment import HEMISPHERES, load_odours
+# Importable both as a script (`python scripts/wiring_structure.py`) and as a
+# module (`from scripts.wiring_structure import ...`), so put its own
+# directory on the path rather than relying on how it was invoked.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from odour_experiment import HEMISPHERES, load_odours  # noqa: E402
 
 SHUFFLE_SEED_BASE = 7000
 
