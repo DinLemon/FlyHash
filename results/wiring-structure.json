@@ -1,0 +1,437 @@
+{
+  "glomeruli": [
+    "DL1",
+    "DC1",
+    "DM2",
+    "DA3",
+    "DA4m",
+    "VC3",
+    "DA4l",
+    "VM2",
+    "DM3",
+    "VA1v",
+    "VA5",
+    "DM4",
+    "DL3",
+    "DM6",
+    "VC4",
+    "DL5",
+    "VA6",
+    "DM5",
+    "VM5d",
+    "DL4",
+    "VA1d",
+    "VM5v",
+    "VM3"
+  ],
+  "hemispheres": [
+    {
+      "animal": "male",
+      "side": "L",
+      "n_shuffles": 200,
+      "pearson": {
+        "fly": 0.23741971986199492,
+        "shuffled_mean": 0.22936725631593416,
+        "shuffled_sd": 0.0034690078666354505,
+        "z": 2.321258370010775,
+        "n_below": 199
+      },
+      "spearman": {
+        "fly": 0.3026667599361389,
+        "shuffled_mean": 0.2972808572675573,
+        "shuffled_sd": 0.0035827283042089734,
+        "z": 1.5032964297778992,
+        "n_below": 185
+      },
+      "pair_vs_correlation_r": 0.11035376298344352,
+      "top_pairs": [
+        {
+          "pair": [
+            "VA1v",
+            "VA1d"
+          ],
+          "observed": 25.0,
+          "expected": 9.155,
+          "z": 5.988430035711614,
+          "odour_correlation": 0.230829466521361
+        },
+        {
+          "pair": [
+            "DM2",
+            "DM4"
+          ],
+          "observed": 70.0,
+          "expected": 43.535,
+          "z": 4.941011856540829,
+          "odour_correlation": 0.2184880988936317
+        },
+        {
+          "pair": [
+            "DC1",
+            "DL3"
+          ],
+          "observed": 24.0,
+          "expected": 10.555,
+          "z": 4.681806576919277,
+          "odour_correlation": 0.3012003680126595
+        },
+        {
+          "pair": [
+            "VA5",
+            "VM5d"
+          ],
+          "observed": 40.0,
+          "expected": 25.225,
+          "z": 3.6591095471754356,
+          "odour_correlation": 0.06223574502611324
+        },
+        {
+          "pair": [
+            "DM6",
+            "VM3"
+          ],
+          "observed": 39.0,
+          "expected": 24.625,
+          "z": 3.6566393639757084,
+          "odour_correlation": 0.34600665648926626
+        },
+        {
+          "pair": [
+            "DL1",
+            "VA6"
+          ],
+          "observed": 40.0,
+          "expected": 25.235,
+          "z": 3.401696751721141,
+          "odour_correlation": -0.0334497932749195
+        },
+        {
+          "pair": [
+            "DM6",
+            "DM5"
+          ],
+          "observed": 46.0,
+          "expected": 30.96,
+          "z": 3.29232924591902,
+          "odour_correlation": 0.23415814529269416
+        },
+        {
+          "pair": [
+            "VA1v",
+            "DL4"
+          ],
+          "observed": 7.0,
+          "expected": 2.325,
+          "z": 3.152332161151746,
+          "odour_correlation": -0.47011928104803036
+        }
+      ]
+    },
+    {
+      "animal": "male",
+      "side": "R",
+      "n_shuffles": 200,
+      "pearson": {
+        "fly": 0.25315162745541747,
+        "shuffled_mean": 0.23893087073056954,
+        "shuffled_sd": 0.0031332368451783914,
+        "z": 4.538679144773772,
+        "n_below": 200
+      },
+      "spearman": {
+        "fly": 0.3182006786187567,
+        "shuffled_mean": 0.3065415197197288,
+        "shuffled_sd": 0.0029595314904549033,
+        "z": 3.9395285830311626,
+        "n_below": 200
+      },
+      "pair_vs_correlation_r": 0.08571345695809092,
+      "top_pairs": [
+        {
+          "pair": [
+            "VA1v",
+            "VA1d"
+          ],
+          "observed": 28.0,
+          "expected": 8.6,
+          "z": 6.79969647877469,
+          "odour_correlation": 0.230829466521361
+        },
+        {
+          "pair": [
+            "DM2",
+            "DM4"
+          ],
+          "observed": 72.0,
+          "expected": 45.575,
+          "z": 4.629956919512947,
+          "odour_correlation": 0.2184880988936317
+        },
+        {
+          "pair": [
+            "VM2",
+            "VM3"
+          ],
+          "observed": 24.0,
+          "expected": 10.775,
+          "z": 4.397505589345719,
+          "odour_correlation": 0.7421655441302911
+        },
+        {
+          "pair": [
+            "DL1",
+            "VA6"
+          ],
+          "observed": 45.0,
+          "expected": 26.57,
+          "z": 4.144441281728232,
+          "odour_correlation": -0.0334497932749195
+        },
+        {
+          "pair": [
+            "DA4m",
+            "DL5"
+          ],
+          "observed": 8.0,
+          "expected": 2.25,
+          "z": 4.03819617368258,
+          "odour_correlation": 0.3653276467966185
+        },
+        {
+          "pair": [
+            "DM4",
+            "VM3"
+          ],
+          "observed": 49.0,
+          "expected": 29.53,
+          "z": 3.8785860976019118,
+          "odour_correlation": 0.2967224033045152
+        },
+        {
+          "pair": [
+            "DA3",
+            "DA4l"
+          ],
+          "observed": 3.0,
+          "expected": 0.575,
+          "z": 3.3488118922101155,
+          "odour_correlation": 0.6856699791904008
+        },
+        {
+          "pair": [
+            "DA4m",
+            "VA5"
+          ],
+          "observed": 8.0,
+          "expected": 3.24,
+          "z": 2.991167958707161,
+          "odour_correlation": 0.024110127629253943
+        }
+      ]
+    },
+    {
+      "animal": "female",
+      "side": "L",
+      "n_shuffles": 200,
+      "pearson": {
+        "fly": 0.24095215656590752,
+        "shuffled_mean": 0.22981177083437976,
+        "shuffled_sd": 0.0037686092559812974,
+        "z": 2.9560999760976663,
+        "n_below": 200
+      },
+      "spearman": {
+        "fly": 0.30477622670073223,
+        "shuffled_mean": 0.2951763073201771,
+        "shuffled_sd": 0.0036322761677641826,
+        "z": 2.642948646293133,
+        "n_below": 200
+      },
+      "pair_vs_correlation_r": 0.10277960857736212,
+      "top_pairs": [
+        {
+          "pair": [
+            "DM2",
+            "DM4"
+          ],
+          "observed": 61.0,
+          "expected": 33.885,
+          "z": 5.970993338330985,
+          "odour_correlation": 0.2184880988936317
+        },
+        {
+          "pair": [
+            "VM2",
+            "VC4"
+          ],
+          "observed": 27.0,
+          "expected": 10.825,
+          "z": 5.1164233101758585,
+          "odour_correlation": 0.6130646013939627
+        },
+        {
+          "pair": [
+            "DM6",
+            "VC4"
+          ],
+          "observed": 35.0,
+          "expected": 16.665,
+          "z": 4.866842089113147,
+          "odour_correlation": 0.26823208323982034
+        },
+        {
+          "pair": [
+            "VC3",
+            "DM6"
+          ],
+          "observed": 49.0,
+          "expected": 27.445,
+          "z": 4.64144714930657,
+          "odour_correlation": 0.3652859124773554
+        },
+        {
+          "pair": [
+            "DL5",
+            "VM5d"
+          ],
+          "observed": 40.0,
+          "expected": 19.57,
+          "z": 4.630629636074798,
+          "odour_correlation": 0.2143389313616075
+        },
+        {
+          "pair": [
+            "DM4",
+            "VM3"
+          ],
+          "observed": 43.0,
+          "expected": 23.63,
+          "z": 4.107068662030339,
+          "odour_correlation": 0.2967224033045152
+        },
+        {
+          "pair": [
+            "DA3",
+            "VA5"
+          ],
+          "observed": 8.0,
+          "expected": 2.39,
+          "z": 3.968953287384658,
+          "odour_correlation": 0.1331195176469082
+        },
+        {
+          "pair": [
+            "VC3",
+            "VM5d"
+          ],
+          "observed": 61.0,
+          "expected": 40.965,
+          "z": 3.614531872900102,
+          "odour_correlation": 0.4609887380616727
+        }
+      ]
+    },
+    {
+      "animal": "female",
+      "side": "R",
+      "n_shuffles": 200,
+      "pearson": {
+        "fly": 0.2266278890394289,
+        "shuffled_mean": 0.21263687566048553,
+        "shuffled_sd": 0.004008088132646928,
+        "z": 3.4906950436001902,
+        "n_below": 200
+      },
+      "spearman": {
+        "fly": 0.29023932370319144,
+        "shuffled_mean": 0.2791838011325588,
+        "shuffled_sd": 0.00418811452792057,
+        "z": 2.639737403771951,
+        "n_below": 198
+      },
+      "pair_vs_correlation_r": 0.09767451658053741,
+      "top_pairs": [
+        {
+          "pair": [
+            "DM2",
+            "DM4"
+          ],
+          "observed": 67.0,
+          "expected": 37.27,
+          "z": 5.823023598140859,
+          "odour_correlation": 0.2184880988936317
+        },
+        {
+          "pair": [
+            "DM4",
+            "VM3"
+          ],
+          "observed": 45.0,
+          "expected": 21.085,
+          "z": 5.153116574910887,
+          "odour_correlation": 0.2967224033045152
+        },
+        {
+          "pair": [
+            "VM5d",
+            "VM5v"
+          ],
+          "observed": 42.0,
+          "expected": 23.95,
+          "z": 4.099362280620769,
+          "odour_correlation": 0.662188602392191
+        },
+        {
+          "pair": [
+            "DM2",
+            "DM3"
+          ],
+          "observed": 38.0,
+          "expected": 21.525,
+          "z": 4.012404305984008,
+          "odour_correlation": 0.7101377003352692
+        },
+        {
+          "pair": [
+            "DM6",
+            "VM5d"
+          ],
+          "observed": 52.0,
+          "expected": 34.915,
+          "z": 3.3611463829036277,
+          "odour_correlation": 0.41567663937655325
+        },
+        {
+          "pair": [
+            "VA1v",
+            "VA6"
+          ],
+          "observed": 27.0,
+          "expected": 15.715,
+          "z": 3.1127303862735616,
+          "odour_correlation": -0.21766699225592004
+        },
+        {
+          "pair": [
+            "VM2",
+            "DM3"
+          ],
+          "observed": 20.0,
+          "expected": 10.465,
+          "z": 2.987168434061988,
+          "odour_correlation": 0.5319000555547992
+        },
+        {
+          "pair": [
+            "DM3",
+            "DM4"
+          ],
+          "observed": 35.0,
+          "expected": 22.51,
+          "z": 2.823372205675323,
+          "odour_correlation": 0.2412536013512889
+        }
+      ]
+    }
+  ]
+}

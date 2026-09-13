@@ -31,7 +31,9 @@ from flyhash.encode import normalize, winner_take_all
 from flyhash.glomeruli import aggregate_by_glomerulus
 from flyhash.models import hash_length, shuffled_projection
 
-HALLEM = Path("data/hallem-carlson-2006.csv")
+# Paths resolve from the repository root, so these scripts run from anywhere.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+HALLEM = REPO_ROOT / "data" / "hallem-carlson-2006.csv"
 SHUFFLE_SEED_BASE = 3000
 
 # Receptor -> glomerulus, from the DoOR mapping table. Or33b is co-expressed in
@@ -47,10 +49,10 @@ RECEPTOR_TO_GLOMERULUS = {
 }
 
 HEMISPHERES = [
-    ("male", "L", "data/circuit.npz"),
-    ("male", "R", "data/circuit.npz"),
-    ("female", "L", "data/circuit-flywire.npz"),
-    ("female", "R", "data/circuit-flywire.npz"),
+    ("male", "L", REPO_ROOT / "data" / "circuit.npz"),
+    ("male", "R", REPO_ROOT / "data" / "circuit.npz"),
+    ("female", "L", REPO_ROOT / "data" / "circuit-flywire.npz"),
+    ("female", "R", REPO_ROOT / "data" / "circuit-flywire.npz"),
 ]
 HASH_FRACTIONS = (0.02, 0.05, 0.10, 0.20)
 NEIGHBOURS = 10
